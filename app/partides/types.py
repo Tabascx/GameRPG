@@ -1,5 +1,5 @@
 import strawberry
-from typing import Optional
+from typing import Optional, Annotated
 
 @strawberry.type
 class ResultatJoc:
@@ -10,6 +10,7 @@ class ResultatJoc:
     monedes_resultat: float
     guanyat: bool
     dia: int
+    jugador: Optional[Annotated["Jugador", strawberry.lazy("app.jugadors.types")]] = None
 
 @strawberry.type
 class Partida:

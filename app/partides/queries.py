@@ -23,6 +23,16 @@ class PartidesQuery:
         return [Partida(id=d.id, **d.to_dict()) for d in docs]
 
     @strawberry.field
-    def resultats_partida(self, partida_id: str) -> list[ResultatJoc]:
-        docs = db.collection("partides").document(partida_id).collection("puntuacions").stream()
-        return [ResultatJoc(id=d.id, **d.to_dict()) for d in docs]
+    def taula_classificacio(self, id_partida: str) -> list[ResultatJoc]:
+        docs = db.collection("partides").document(id_partida).collection("puntuacions").stream()
+        result = []
+        for d in docs:
+            data = d.to_dict()
+            # Relació inversa N:1 via LazyType → carrega el jugador
+            from app.jugadors.types import Jugador
+            jug_doc = db.collection("jugadors").document(data["jugador_id"]).get()
+            jugador = None
+            if jug_doc.exists:
+                jugador = Jugador(id=jug_doc.id, millores=[], **jug_doc.to_dict())
+            result.append(ResultatJoc(id=d.id, jugador=jugador, **data))
+        return result
