@@ -1,8 +1,8 @@
 import strawberry
 from typing import Union
-from app.firebase_conf import db
-from app.auth import get_current_user
-from app.jugadors.types import Jugador, Millora, RegistrarJugadorInput, ComprarMilloraInput, ErrorJugadorBanejat, ErrorSenseMonedes
+from backend.firebase_conf import db
+from backend.auth import get_current_user
+from backend.jugadors.types import Jugador, Millora, RegistrarJugadorInput, ComprarMilloraInput, ErrorJugadorBanejat, ErrorSenseMonedes
 from strawberry.types import Info
 
 COST_MILLORA = {

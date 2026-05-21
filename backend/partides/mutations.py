@@ -1,7 +1,7 @@
 import strawberry
 from typing import Annotated, Union
-from app.firebase_conf import db
-from app.partides.types import Partida, ResultatJoc, CrearPartidaInput, RegistrarResultatInput, ErrorPartidaNoTrobada
+from backend.firebase_conf import db
+from backend.partides.types import Partida, ResultatJoc, CrearPartidaInput, RegistrarResultatInput, ErrorPartidaNoTrobada
 from strawberry.types import Info
 from datetime import datetime
 

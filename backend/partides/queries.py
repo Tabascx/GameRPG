@@ -1,7 +1,7 @@
 import strawberry
 from typing import Optional
-from app.firebase_conf import db
-from app.partides.types import Partida, ResultatJoc
+from backend.firebase_conf import db
+from backend.partides.types import Partida, ResultatJoc
 
 @strawberry.type
 class PartidesQuery:
@@ -29,7 +29,7 @@ class PartidesQuery:
         for d in docs:
             data = d.to_dict()
             # Relació inversa N:1 via LazyType → carrega el jugador
-            from app.jugadors.types import Jugador
+            from backend.jugadors.types import Jugador
             jug_doc = db.collection("jugadors").document(data["jugador_id"]).get()
             jugador = None
             if jug_doc.exists:

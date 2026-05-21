@@ -1,6 +1,6 @@
 import strawberry
-from app.firebase_conf import db
-from app.jugadors.types import Jugador, Millora
+from backend.firebase_conf import db
+from backend.jugadors.types import Jugador, Millora
 
 @strawberry.type
 class JugadorsQuery:

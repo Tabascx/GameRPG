@@ -1,8 +1,8 @@
 import strawberry
-from app.jugadors.queries import JugadorsQuery
-from app.jugadors.mutations import JugadorsMutation
-from app.partides.queries import PartidesQuery
-from app.partides.mutations import PartidesMutation
+from backend.jugadors.queries import JugadorsQuery
+from backend.jugadors.mutations import JugadorsMutation
+from backend.partides.queries import PartidesQuery
+from backend.partides.mutations import PartidesMutation
 
 @strawberry.type
 class Query(JugadorsQuery, PartidesQuery):

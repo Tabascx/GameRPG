@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
-import GameScene from '../game/GameScene'
+import LoginScene from '../game/LoginScene'
+import RecinteScene from '../game/RecinteScene'
+import CasinoScene from '../game/CasinoScene'
+import BlackjackScene from '../game/BlackjackScene'
+import RuletaScene from '../game/RuletaScene'
+import SlotsScene from '../game/SlotsScene'
 
 export default function Battle({ jugador }) {
     const gameRef = useRef(null)
@@ -12,16 +17,13 @@ export default function Battle({ jugador }) {
             type: Phaser.AUTO,
             width: 800,
             height: 600,
-            backgroundColor: '#000011',
+            backgroundColor: '#0d0a06',
             parent: 'phaser-container',
             physics: {
                 default: 'arcade',
-                arcade: {
-                    gravity: { y: 0 },
-                    debug: false,
-                }
+                arcade: { gravity: { y: 0 }, debug: false }
             },
-            scene: [GameScene],
+            scene: [LoginScene, RecinteScene, CasinoScene, BlackjackScene, RuletaScene, SlotsScene]
         })
 
         return () => {
@@ -31,16 +33,8 @@ export default function Battle({ jugador }) {
     }, [])
 
     return (
-        <div className="container mt-4">
-            <div className="row">
-                <div className="col-12 text-center">
-                    <h3 className="text-warning">⚔️ Combat — Dia {jugador?.diaActual}</h3>
-                    <p className="text-white">Monedes: <strong>{jugador?.monedes}$</strong></p>
-                </div>
-                <div className="col-12 d-flex justify-content-center">
-                    <div id="phaser-container" />
-                </div>
-            </div>
+        <div style={{ background: '#0d0a06', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '20px' }}>
+            <div id="phaser-container" />
         </div>
     )
 }

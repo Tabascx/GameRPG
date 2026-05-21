@@ -10,7 +10,7 @@ class ResultatJoc:
     monedes_resultat: float
     guanyat: bool
     dia: int
-    jugador: Optional[Annotated["Jugador", strawberry.lazy("app.jugadors.types")]] = None
+    jugador: Optional[Annotated["Jugador", strawberry.lazy("backend.jugadors.types")]] = None
 
 @strawberry.type
 class Partida:
