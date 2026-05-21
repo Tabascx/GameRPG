@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 
 export default class RecinteScene extends Phaser.Scene {
     constructor() {
-        super({key: 'RecinteScene'})
+        super({ key: 'RecinteScene' })
     }
 
     init(data) {
@@ -13,6 +13,7 @@ export default class RecinteScene extends Phaser.Scene {
     }
 
     preload() {
+        // SIN spacing — el tileset es 12x11 tiles contiguos de 16x16
         this.load.spritesheet('town', '/assets/town.png', {
             frameWidth: 16,
             frameHeight: 16
@@ -20,12 +21,11 @@ export default class RecinteScene extends Phaser.Scene {
     }
 
     create() {
-        const {width, height} = this.scale
+        const { width, height } = this.scale
         const TILE = 32
         const COLS = 25
         const ROWS = 20
 
-        // Dibuixa el recinte amb tiles
         this.drawRecinte(TILE, COLS, ROWS)
 
         // HUD
@@ -41,299 +41,136 @@ export default class RecinteScene extends Phaser.Scene {
         }).setOrigin(1, 0).setScrollFactor(0)
     }
 
-    drawRecinte(TILE, COLS, ROWS) {
-        const {width, height} = this.scale
+    t(col, row, frame, depth = 0) {
+        // Helper: pinta un tile en posición de grid
+        const TILE = 32
+        return this.add.image(
+            col * TILE + TILE / 2,
+            row * TILE + TILE / 2,
+            'town',
+            frame
+        ).setScale(2).setDepth(depth)
+    }
 
-        // ============ CAPA DE SUELO BASE - HIERBA ============
-        // Hierba con textura orgánica alternando frames 0, 1, 2, 4, 5
-        const grassFrames = [0, 1, 2, 4, 5]
+    drawRecinte(TILE, COLS, ROWS) {
+        // ── FRAMES VERIFICADOS PIXEL A PIXEL ──
+        // Hierba:        0, 1, 2
+        // Tierra/arena:  12, 13, 14, 36, 37, 38, 39, 40, 41, 42
+        // Piedra gris:   48, 49, 50, 51, 60, 61, 62, 63
+        // Tejado rojo:   52, 53, 54, 64, 65, 66
+        // Muro piedra:   96, 97, 98, 99, 100, 101, 102, 108, 109, 110, 120, 121, 122
+        // NUNCA usar:    3,4,5,6,7,8,9,10,11,15,16,17,18,20,21,23,27..35,44..47,56,58,59,68..71,74,78,80..83
+
+        const GRASS = [0, 1, 2]
+        const PATH  = [36, 37, 38]   // tierra/arena para camino
+        const WALL  = [96, 97, 98]   // muro piedra gris horizontal
+        const WALLV = [120, 121, 122] // muro piedra gris vertical
+        const WALLT = [108, 109, 110] // muro piedra top (más claro)
+
+        // ── 1. SUELO HIERBA (interior) ──
         for (let row = 1; row < ROWS - 1; row++) {
             for (let col = 1; col < COLS - 1; col++) {
-                const grassFrame = grassFrames[Phaser.Math.Between(0, grassFrames.length - 1)]
-                this.add.image(
-                    col * TILE + TILE / 2,
-                    row * TILE + TILE / 2,
-                    'town',
-                    grassFrame
-                ).setScale(2).setDepth(0)
+                const f = GRASS[(col + row) % 3]
+                this.t(col, row, f, 0)
             }
         }
 
-        // ============ MURALLAS EXTERIORES - PIEDRA GRIS ============
-        // Muros horizontales (norte y sur) - frames 96, 97, 98, 99
-        const horWallFrames = [96, 97, 98, 99]
-        for (let col = 1; col < COLS - 1; col++) {
-            const wallFrame = horWallFrames[Phaser.Math.Between(0, horWallFrames.length - 1)]
-            this.add.image(col * TILE + TILE / 2, TILE / 2, 'town', wallFrame).setScale(2).setDepth(5)
-            
-            // Muro sur con hueco para portón (4 tiles en el centro)
-            const portonStart = Math.floor(COLS / 2) - 2
-            const portonEnd = Math.floor(COLS / 2) + 2
-            if (col < portonStart || col > portonEnd) {
-                const wallFrame2 = horWallFrames[Phaser.Math.Between(0, horWallFrames.length - 1)]
-                this.add.image(col * TILE + TILE / 2, (ROWS - 1) * TILE + TILE / 2, 'town', wallFrame2).setScale(2).setDepth(5)
+        // ── 2. MURALLAS EXTERIORES ──
+        const portonCol = Math.floor(COLS / 2)
+
+        // Muro norte (fila 0)
+        for (let col = 0; col < COLS; col++) {
+            this.t(col, 0, WALLT[col % 3], 5)
+        }
+        // Muro sur (fila ROWS-1) con hueco de 1 tile para portón
+        for (let col = 0; col < COLS; col++) {
+            if (col !== portonCol) {
+                this.t(col, ROWS - 1, WALL[col % 3], 5)
             }
         }
-
-        // Muros verticales (este y oeste) - frames 96, 108, 120
-        const verWallFrames = [96, 108, 120]
+        // Muros este y oeste
         for (let row = 1; row < ROWS - 1; row++) {
-            const wallFrame1 = verWallFrames[Phaser.Math.Between(0, verWallFrames.length - 1)]
-            const wallFrame2 = verWallFrames[Phaser.Math.Between(0, verWallFrames.length - 1)]
-            this.add.image(TILE / 2, row * TILE + TILE / 2, 'town', wallFrame1).setScale(2).setDepth(5)
-            this.add.image((COLS - 1) * TILE + TILE / 2, row * TILE + TILE / 2, 'town', wallFrame2).setScale(2).setDepth(5)
+            this.t(0, row, WALLV[row % 3], 5)
+            this.t(COLS - 1, row, WALLV[row % 3], 5)
         }
 
-        // Esquinas - usar primer frame de muro horizontal
-        this.add.image(TILE / 2, TILE / 2, 'town', 96).setScale(2).setDepth(5)
-        this.add.image((COLS - 1) * TILE + TILE / 2, TILE / 2, 'town', 96).setScale(2).setDepth(5)
-        this.add.image(TILE / 2, (ROWS - 1) * TILE + TILE / 2, 'town', 96).setScale(2).setDepth(5)
-        this.add.image((COLS - 1) * TILE + TILE / 2, (ROWS - 1) * TILE + TILE / 2, 'town', 96).setScale(2).setDepth(5)
-
-        // ============ EDIFICIOS (ESQUINAS SUPERIORES) ============
-        // Edificio superior izquierdo (2x2)
-        this.drawBuilding(2, 2, TILE, 'Smithy')
-        // Edificio superior derecho (2x2)
-        this.drawBuilding(COLS - 4, 2, TILE, 'Armory')
-
-        // ============ CAMINO CENTRAL - TIERRA/MARRON ============
-        const pathCenterCol = Math.floor(COLS / 2)
-        const pathStartRow = 3
-        const pathEndRow = ROWS - 2
-        const caminoFrames = [25, 36, 37, 38]
-
-        // Camino vertical (tierra marrón)
-        for (let row = pathStartRow; row <= pathEndRow; row++) {
-            const caminoFrame = caminoFrames[Phaser.Math.Between(0, caminoFrames.length - 1)]
-            this.add.image(pathCenterCol * TILE + TILE / 2, row * TILE + TILE / 2, 'town', caminoFrame).setScale(2).setDepth(1)
+        // ── 3. CAMINO CENTRAL (tierra) ──
+        const pathStart = 3
+        const pathEnd = ROWS - 2
+        for (let row = pathStart; row <= pathEnd; row++) {
+            // 3 tiles de ancho: col-1, col, col+1
+            this.t(portonCol - 1, row, PATH[0], 1)
+            this.t(portonCol,     row, PATH[1], 1)
+            this.t(portonCol + 1, row, PATH[2], 1)
         }
 
-        // Bordes del camino - hierba en lugar de frames vacíos
-        for (let row = pathStartRow; row <= pathEndRow; row++) {
-            const grassL = grassFrames[Phaser.Math.Between(0, grassFrames.length - 1)]
-            const grassR = grassFrames[Phaser.Math.Between(0, grassFrames.length - 1)]
-            this.add.image((pathCenterCol - 1) * TILE + TILE / 2, row * TILE + TILE / 2, 'town', grassL).setScale(2).setDepth(1)
-            this.add.image((pathCenterCol + 1) * TILE + TILE / 2, row * TILE + TILE / 2, 'town', grassR).setScale(2).setDepth(1)
-        }
+        // ── 4. CASINO (centro, 3x2 tiles) ──
+        const cCol = Math.floor(COLS / 2)
+        const cRow = Math.floor(ROWS / 2) - 1
 
-        // Cruce central - tierra
-        const cruxFrame = caminoFrames[Phaser.Math.Between(0, caminoFrames.length - 1)]
-        this.add.image(pathCenterCol * TILE + TILE / 2, Math.floor(ROWS / 2) * TILE + TILE / 2, 'town', cruxFrame).setScale(2).setDepth(2)
+        // Tejado (fila superior): frames rojos 52, 53, 54
+        this.t(cCol - 1, cRow,     52, 4)
+        this.t(cCol,     cRow,     53, 4)
+        this.t(cCol + 1, cRow,     54, 4)
 
-        // ============ CASINO (CENTRO) ============
-        this.drawCasinoBuilding(TILE, COLS, ROWS)
+        // Pared (fila inferior): piedra gris 60, 61, 62
+        this.t(cCol - 1, cRow + 1, 60, 4)
+        this.t(cCol,     cRow + 1, 61, 4)
+        this.t(cCol + 1, cRow + 1, 62, 4)
 
-        // ============ DECORACIÓN: FAROLAS ============
-        const farolaFrames = [44, 45, 46]
-        const farolaPositions = [
-            {x: 2, y: 5},
-            {x: COLS - 3, y: 5},
-            {x: 2, y: ROWS - 4},
-            {x: COLS - 3, y: ROWS - 4}
-        ]
+        // Tejado segunda fila: 64, 65, 66
+        this.t(cCol - 1, cRow + 2, 64, 4)
+        this.t(cCol,     cRow + 2, 65, 4)
+        this.t(cCol + 1, cRow + 2, 66, 4)
 
-        farolaPositions.forEach(pos => {
-            const farolaFrame = farolaFrames[Phaser.Math.Between(0, farolaFrames.length - 1)]
-            const img = this.add.image(pos.x * TILE + TILE / 2, pos.y * TILE + TILE / 2, 'town', farolaFrame).setScale(2).setDepth(6)
-            
-            // Parpadeo suave
-            this.tweens.add({
-                targets: img,
-                alpha: {from: 1, to: 0.7},
-                duration: 800,
-                yoyo: true,
-                repeat: -1
-            })
-
-            // Luz simulada alrededor de farola
-            const luz = this.add.circle(pos.x * TILE + TILE / 2, pos.y * TILE + TILE / 2, 40, 0xffd700, 0.08).setDepth(0)
-            this.tweens.add({
-                targets: luz,
-                alpha: {from: 0.12, to: 0.04},
-                duration: 800,
-                yoyo: true,
-                repeat: -1
-            })
-        })
-
-        // ============ DECORACIÓN: HIERBA ADICIONAL (sin frames vacíos) ============
-        // Mantener las zonas de hierba pero sin elementos decorativos que usen frames vacíos
-
-        // ============ POZO/BARRIL ============
-        const pocoFrames = [80, 81, 82, 83]
-        const pozX = 3
-        const pozY = Math.floor(ROWS / 2)
-        const pozFrame = pocoFrames[Phaser.Math.Between(0, pocoFrames.length - 1)]
-        this.add.image(pozX * TILE + TILE / 2, pozY * TILE + TILE / 2, 'town', pozFrame).setScale(2).setDepth(4)
-
-        // ============ PORTÓN PRINCIPAL (CENTRO MURO SUR) ============
-        this.drawPorton(pathCenterCol, ROWS - 1, TILE)
-    }
-
-    drawBuilding(startCol, startRow, TILE, name) {
-        // Base del edificio 2x2 - frames 48, 49, 50, 60, 61, 62
-        const baseFrames = [48, 49, 50, 60, 61, 62]
-        for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 2; j++) {
-                const frame = baseFrames[Phaser.Math.Between(0, baseFrames.length - 1)]
-                this.add.image(
-                    (startCol + j) * TILE + TILE / 2,
-                    (startRow + i) * TILE + TILE / 2,
-                    'town',
-                    frame
-                ).setScale(2).setDepth(4)
-            }
-        }
-
-        // Tejado rojo encima - frames 52, 54, 64, 66
-        const roofFrames = [52, 54, 64, 66]
-        for (let i = 0; i < 2; i++) {
-            const frame = roofFrames[Phaser.Math.Between(0, roofFrames.length - 1)]
-            this.add.image(
-                (startCol + i) * TILE + TILE / 2,
-                (startRow - 1) * TILE + TILE / 2,
-                'town',
-                frame
-            ).setScale(2).setDepth(5)
-        }
-
-        // Tierra oscura base - frames 27, 39, 40, 41
-        const darkEarthFrames = [27, 39, 40, 41]
-        for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 2; j++) {
-                const frame = darkEarthFrames[Phaser.Math.Between(0, darkEarthFrames.length - 1)]
-                this.add.image(
-                    (startCol + j) * TILE + TILE / 2,
-                    (startRow + 2) * TILE + TILE / 2,
-                    'town',
-                    frame
-                ).setScale(2).setDepth(3)
-            }
-        }
-    }
-
-    drawCasinoBuilding(TILE, COLS, ROWS) {
-        const centerCol = Math.floor(COLS / 2)
-        const centerRow = Math.floor(ROWS / 2)
-
-        // Base de tierra oscura - frames 27, 39, 40, 41
-        const darkEarthFrames = [27, 39, 40, 41]
-        for (let i = -1; i <= 1; i++) {
-            for (let j = -1; j <= 1; j++) {
-                const frame = darkEarthFrames[Phaser.Math.Between(0, darkEarthFrames.length - 1)]
-                this.add.image(
-                    (centerCol + i) * TILE + TILE / 2,
-                    (centerRow + j) * TILE + TILE / 2,
-                    'town',
-                    frame
-                ).setScale(2).setDepth(2)
-            }
-        }
-
-        // Edificio grande 3x3 - pared frames 48, 49, 50, 60, 61, 62
-        const wallFrames = [48, 49, 50, 60, 61, 62]
-        for (let i = -1; i <= 1; i++) {
-            const frame = wallFrames[Phaser.Math.Between(0, wallFrames.length - 1)]
-            this.add.image(
-                (centerCol + i) * TILE + TILE / 2,
-                (centerRow) * TILE + TILE / 2,
-                'town',
-                frame
-            ).setScale(2).setDepth(3)
-        }
-
-        // Tejado rojo (frames 52, 54, 64, 66)
-        const roofFrames = [52, 54, 64, 66]
-        for (let i = -1; i <= 1; i++) {
-            const frame = roofFrames[Phaser.Math.Between(0, roofFrames.length - 1)]
-            this.add.image(
-                (centerCol + i) * TILE + TILE / 2,
-                (centerRow - 1) * TILE + TILE / 2,
-                'town',
-                frame
-            ).setScale(2).setDepth(4)
-        }
-
-        // Nivel medio - pared frames
-        for (let i = -1; i <= 1; i++) {
-            const frame = wallFrames[Phaser.Math.Between(0, wallFrames.length - 1)]
-            this.add.image(
-                (centerCol + i) * TILE + TILE / 2,
-                (centerRow + 1) * TILE + TILE / 2,
-                'town',
-                frame
-            ).setScale(2).setDepth(4)
-        }
-
-        // Puerta central - usar frame de pared
-        const doorFrame = wallFrames[Phaser.Math.Between(0, wallFrames.length - 1)]
-        this.add.image(
-            centerCol * TILE + TILE / 2,
-            (centerRow + 2) * TILE + TILE / 2,
-            'town',
-            doorFrame
-        ).setScale(2).setDepth(5)
-
-        // Letrero "CASINO" en dorado
+        // Letrero
         this.add.text(
-            centerCol * TILE + TILE / 2,
-            (centerRow - 3) * TILE + TILE / 2,
-            '🎰 CASINO 🎰',
-            {
-                fontSize: '16px',
-                fill: '#ffd700',
-                fontFamily: 'serif',
-                stroke: '#000',
-                strokeThickness: 3
-            }
+            cCol * TILE + TILE / 2,
+            (cRow - 1) * TILE + TILE / 2,
+            'CASINO',
+            { fontSize: '14px', fill: '#ffd700', fontFamily: 'serif', stroke: '#000', strokeThickness: 3 }
         ).setOrigin(0.5).setDepth(6)
 
-        // Elemento decorativo superior - usar frame de farola/pozo
-        const pocoFrames = [80, 81, 82, 83]
-        const topDecor = pocoFrames[Phaser.Math.Between(0, pocoFrames.length - 1)]
-        this.add.image(
-            (centerCol + 2) * TILE + TILE / 2,
-            (centerRow - 2) * TILE + TILE / 2,
-            'town',
-            topDecor
-        ).setScale(2).setDepth(6)
-    }
+        // Zona interactiva casino
+        const casinoZone = this.add.zone(
+            cCol * TILE + TILE / 2,
+            (cRow + 1) * TILE + TILE / 2,
+            TILE * 3, TILE * 3
+        ).setInteractive({ useHandCursor: true }).setDepth(6)
 
-    drawPorton(col, row, TILE) {
-        const x = col * TILE + TILE / 2
-        const y = row * TILE + TILE / 2
-
-        // Marco del portón - usar frame de tierra para portón
-        const portonFrame = 25
-        const porton = this.add.image(x, y, 'town', portonFrame).setScale(2).setDepth(6)
-        porton.setInteractive({useHandCursor: true})
-
-        // Animación de brillo/pulso
-        this.tweens.add({
-            targets: porton,
-            alpha: {from: 1, to: 0.7},
-            duration: 1000,
-            yoyo: true,
-            repeat: -1
+        casinoZone.on('pointerdown', () => {
+            this.cameras.main.fade(500, 0, 0, 0)
+            this.time.delayedCall(500, () => {
+                this.scene.start('CasinoScene', {
+                    nickname: this.nickname,
+                    monedes: this.monedes,
+                    dia: this.dia,
+                    millores: this.millores
+                })
+            })
         })
 
-        // Luz del portón
-        const luz = this.add.circle(x, y - TILE, 50, 0xffd700, 0.12).setDepth(5)
-        this.tweens.add({
-            targets: luz,
-            alpha: {from: 0.18, to: 0.06},
-            duration: 1000,
-            yoyo: true,
-            repeat: -1
-        })
+        // ── 5. EDIFICIOS LATERALES (2x2) ──
+        // Izquierdo
+        const lCol = 4, lRow = Math.floor(ROWS / 2) - 1
+        this.t(lCol,     lRow,     52, 4)
+        this.t(lCol + 1, lRow,     54, 4)
+        this.t(lCol,     lRow + 1, 60, 4)
+        this.t(lCol + 1, lRow + 1, 62, 4)
 
-        // Interacción: fade negro → CasinoScene
-        porton.on('pointerover', () => {
-            porton.setTint(0xffff88)
-        })
-        porton.on('pointerout', () => {
-            porton.clearTint()
-        })
+        // Derecho
+        const rCol = COLS - 6, rRow = Math.floor(ROWS / 2) - 1
+        this.t(rCol,     rRow,     52, 4)
+        this.t(rCol + 1, rRow,     54, 4)
+        this.t(rCol,     rRow + 1, 60, 4)
+        this.t(rCol + 1, rRow + 1, 62, 4)
+
+        // ── 6. PORTÓN (centro muro sur) ──
+        const porton = this.t(portonCol, ROWS - 1, 99, 6)
+        porton.setInteractive({ useHandCursor: true })
+        this.tweens.add({ targets: porton, alpha: { from: 1, to: 0.7 }, duration: 900, yoyo: true, repeat: -1 })
+        porton.on('pointerover', () => porton.setTint(0xffff88))
+        porton.on('pointerout', () => porton.clearTint())
         porton.on('pointerdown', () => {
             this.cameras.main.fade(500, 0, 0, 0)
             this.time.delayedCall(500, () => {
@@ -345,5 +182,12 @@ export default class RecinteScene extends Phaser.Scene {
                 })
             })
         })
+
+        // ── 7. ÁRBOLES EN ESQUINAS (frame 19 = verde sólido, sin negro) ──
+        const treeFrame = 19 // verde sólido verificado, dark=0.04
+        this.t(2,         2,         treeFrame, 3)
+        this.t(COLS - 3,  2,         treeFrame, 3)
+        this.t(2,         ROWS - 3,  treeFrame, 3)
+        this.t(COLS - 3,  ROWS - 3,  treeFrame, 3)
     }
 }
