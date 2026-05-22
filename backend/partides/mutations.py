@@ -1,7 +1,15 @@
 import strawberry
-from typing import Annotated, Union
+from typing import Union
 from backend.firebase_conf import db
-from backend.partides.types import Partida, ResultatJoc, CrearPartidaInput, RegistrarResultatInput, ErrorPartidaNoTrobada
+from backend.config.service import aplicar_multiplicador_seguro
+from backend.partides.types import (
+    Partida,
+    ResultatJoc,
+    CrearPartidaInput,
+    RegistrarResultatInput,
+    RegistrarPuntuacioInput,
+    ErrorPartidaNoTrobada,
+)
 from strawberry.types import Info
 from datetime import datetime
 
@@ -30,7 +38,8 @@ class PartidesMutation:
 
         monedes_finals = input.monedes_resultat
         if not input.guanyat and input.monedes_resultat < 0:
-            seguro = SEGURO_AMB_MURALLA if te_muralla else SEGURO_BASE
+            seguro_base = SEGURO_AMB_MURALLA if te_muralla else SEGURO_BASE
+            seguro = aplicar_multiplicador_seguro(seguro_base)
             monedes_finals = input.monedes_resultat * (1 - seguro)
 
         # Actualitzar monedes del jugador
@@ -48,6 +57,21 @@ class PartidesMutation:
             "dia": input.dia
         }
         nova = db.collection("partides").document(input.partida_id).collection("puntuacions").add(data)
+        return ResultatJoc(id=nova[1].id, **data)
+
+    @strawberry.mutation
+    def registrar_puntuacio(self, input: RegistrarPuntuacioInput, info: Info) -> Union[ResultatJoc, ErrorPartidaNoTrobada]:
+        partida_ref = db.collection("partides").document(input.partida_id)
+        partida = partida_ref.get()
+        if not partida.exists:
+            return ErrorPartidaNoTrobada(missatge=f"Partida {input.partida_id} no trobada")
+
+        data = {
+            "jugador_id": input.jugador_id,
+            "punts": input.punts,
+            "baixes": input.baixes,
+        }
+        nova = partida_ref.collection("puntuacions").add(data)
         return ResultatJoc(id=nova[1].id, **data)
 
     @strawberry.mutation

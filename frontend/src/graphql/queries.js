@@ -31,10 +31,17 @@ export const GET_LEADERBOARD = gql`
 export const REGISTRAR_JUGADOR = gql`
   mutation RegistrarJugador($nickname: String!) {
     registrarJugador(input: { nickname: $nickname }) {
-      id
-      nickname
-      monedes
-      diaActual
+      __typename
+      ... on Jugador {
+        id
+        nickname
+        nivell
+        monedes
+        diaActual
+      }
+      ... on ErrorNoAutoritzat {
+        missatge
+      }
     }
   }
 `;
@@ -50,7 +57,7 @@ export const COMPRAR_MILLORA = gql`
       ... on ErrorSenseMonedes {
         missatge
       }
-      ... on ErrorJugadorBanejat {
+      ... on ErrorJugadorBan {
         missatge
       }
     }

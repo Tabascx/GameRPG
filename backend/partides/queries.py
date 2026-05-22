@@ -24,15 +24,19 @@ class PartidesQuery:
 
     @strawberry.field
     def taula_classificacio(self, id_partida: str) -> list[ResultatJoc]:
+        from backend.loaders import get_jugadors_map
+
         docs = db.collection("partides").document(id_partida).collection("puntuacions").stream()
-        result = []
+        puntuacions = []
+        jugador_ids = set()
         for d in docs:
             data = d.to_dict()
-            # Relació inversa N:1 via LazyType → carrega el jugador
-            from backend.jugadors.types import Jugador
-            jug_doc = db.collection("jugadors").document(data["jugador_id"]).get()
-            jugador = None
-            if jug_doc.exists:
-                jugador = Jugador(id=jug_doc.id, millores=[], **jug_doc.to_dict())
-            result.append(ResultatJoc(id=d.id, jugador=jugador, **data))
-        return result
+            puntuacions.append((d.id, data))
+            jugador_ids.add(data["jugador_id"])
+
+        jugadors_map = get_jugadors_map(list(jugador_ids))
+
+        return [
+            ResultatJoc(id=pid, jugador=jugadors_map.get(data["jugador_id"]), **data)
+            for pid, data in puntuacions
+        ]

@@ -26,7 +26,11 @@ export default function Hangar({ setJugador }) {
     const [registrar] = useMutation(REGISTRAR_JUGADOR, {
         onCompleted: (result) => {
             const jugadorRegistrado = result?.registrarJugador
-            if (jugadorRegistrado) {
+            if (jugadorRegistrado?.__typename === 'ErrorNoAutoritzat') {
+                setError(jugadorRegistrado.missatge)
+                return
+            }
+            if (jugadorRegistrado?.__typename === 'Jugador') {
                 setError('')
                 setJugadorId(jugadorRegistrado.id)
                 localStorage.setItem('jugadorId', jugadorRegistrado.id)
