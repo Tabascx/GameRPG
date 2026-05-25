@@ -1,5 +1,6 @@
 import strawberry
 from typing import Optional
+from google.cloud.firestore_v1.base_query import FieldFilter
 from backend.firebase_conf import db
 from backend.partides.types import Partida, ResultatJoc
 
@@ -15,11 +16,12 @@ class PartidesQuery:
     ) -> list[Partida]:
         query = db.collection("partides")
         if jugador_id:
-            query = query.where("jugador_id", "==", jugador_id)
+            query = query.where(filter=FieldFilter("jugador_id", "==", jugador_id))
         if estat:
-            query = query.where("estat", "==", estat)
-        docs = list(query.stream())
-        docs = docs[offset: offset + limit]
+            query = query.where(filter=FieldFilter("estat", "==", estat))
+        limit = max(1, min(limit, 50))
+        offset = max(0, offset)
+        docs = query.offset(offset).limit(limit).stream()
         return [Partida(id=d.id, **d.to_dict()) for d in docs]
 
     @strawberry.field

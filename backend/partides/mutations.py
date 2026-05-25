@@ -2,6 +2,7 @@ import strawberry
 from typing import Union
 from backend.firebase_conf import db
 from backend.config.service import aplicar_multiplicador_seguro
+from backend.jugadors.types import ErrorJugadorNoTrobat
 from backend.partides.types import (
     Partida,
     ResultatJoc,
@@ -31,7 +32,15 @@ class PartidesMutation:
         return Partida(id=ref[1].id, **data)
 
     @strawberry.mutation
-    def registrar_resultat(self, input: RegistrarResultatInput, info: Info) -> ResultatJoc:
+    def registrar_resultat(self, input: RegistrarResultatInput, info: Info) -> Union[ResultatJoc, ErrorPartidaNoTrobada, ErrorJugadorNoTrobat]:
+        partida_ref = db.collection("partides").document(input.partida_id)
+        if not partida_ref.get().exists:
+            return ErrorPartidaNoTrobada(missatge=f"Partida {input.partida_id} no trobada")
+
+        jugador_ref = db.collection("jugadors").document(input.jugador_id)
+        jugador_doc = jugador_ref.get()
+        if not jugador_doc.exists:
+            return ErrorJugadorNoTrobat(missatge=f"Jugador {input.jugador_id} no trobat")
         # Comprovar si té seguro i muralla
         inventari = db.collection("jugadors").document(input.jugador_id).collection("inventari").stream()
         te_muralla = any(i.to_dict().get("nom") == "muralla" for i in inventari)
@@ -43,9 +52,8 @@ class PartidesMutation:
             monedes_finals = input.monedes_resultat * (1 - seguro)
 
         # Actualitzar monedes del jugador
-        ref = db.collection("jugadors").document(input.jugador_id)
-        doc = ref.get().to_dict()
-        ref.update({"monedes": doc["monedes"] + monedes_finals})
+        jugador_data = jugador_doc.to_dict()
+        jugador_ref.update({"monedes": jugador_data["monedes"] + monedes_finals})
 
         # Guardar resultat
         data = {
@@ -56,15 +64,19 @@ class PartidesMutation:
             "guanyat": input.guanyat,
             "dia": input.dia
         }
-        nova = db.collection("partides").document(input.partida_id).collection("puntuacions").add(data)
+        nova = partida_ref.collection("puntuacions").add(data)
         return ResultatJoc(id=nova[1].id, **data)
 
     @strawberry.mutation
-    def registrar_puntuacio(self, input: RegistrarPuntuacioInput, info: Info) -> Union[ResultatJoc, ErrorPartidaNoTrobada]:
+    def registrar_puntuacio(self, input: RegistrarPuntuacioInput, info: Info) -> Union[ResultatJoc, ErrorPartidaNoTrobada, ErrorJugadorNoTrobat]:
         partida_ref = db.collection("partides").document(input.partida_id)
         partida = partida_ref.get()
         if not partida.exists:
             return ErrorPartidaNoTrobada(missatge=f"Partida {input.partida_id} no trobada")
+
+        jugador_ref = db.collection("jugadors").document(input.jugador_id)
+        if not jugador_ref.get().exists:
+            return ErrorJugadorNoTrobat(missatge=f"Jugador {input.jugador_id} no trobat")
 
         data = {
             "jugador_id": input.jugador_id,

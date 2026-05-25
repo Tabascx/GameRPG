@@ -60,6 +60,9 @@ export const COMPRAR_MILLORA = gql`
       ... on ErrorJugadorBan {
         missatge
       }
+      ... on ErrorJugadorNoTrobat {
+        missatge
+      }
     }
   }
 `;

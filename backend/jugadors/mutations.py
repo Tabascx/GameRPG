@@ -15,7 +15,9 @@ from backend.jugadors.types import (
     ErrorSenseMonedes,
     ErrorNoAutoritzat,
     ErrorJugadorNoTrobat,
+    ErrorItemInvalid,
     normalitzar_jugador_data,
+    normalitzar_item_id,
 )
 from strawberry.types import Info
 
@@ -49,11 +51,11 @@ class JugadorsMutation:
         return Jugador(id=uid, millores=[], inventari=[], **data)
 
     @strawberry.mutation
-    def comprar_millora(self, input: ComprarMilloraInput, info: Info) -> Union[Millora, ErrorSenseMonedes, ErrorJugadorBan]:
+    def comprar_millora(self, input: ComprarMilloraInput, info: Info) -> Union[Millora, ErrorSenseMonedes, ErrorJugadorBan, ErrorJugadorNoTrobat]:
         ref = db.collection("jugadors").document(input.jugador_id)
         doc = ref.get()
         if not doc.exists:
-            return ErrorSenseMonedes(missatge=f"Jugador {input.jugador_id} no trobat")
+            return ErrorJugadorNoTrobat(missatge=f"Jugador {input.jugador_id} no trobat")
 
         data = doc.to_dict()
 
@@ -70,7 +72,7 @@ class JugadorsMutation:
         return Millora(id=nova[1].id, **millora_data)
 
     @strawberry.mutation
-    def give_item(self, input: GiveItemInput, info: Info) -> Union[Item, ErrorJugadorNoTrobat, ErrorJugadorBan]:
+    def give_item(self, input: GiveItemInput, info: Info) -> Union[Item, ErrorJugadorNoTrobat, ErrorJugadorBan, ErrorItemInvalid]:
         ref = db.collection("jugadors").document(input.jugador_id)
         doc = ref.get()
         if not doc.exists:
@@ -80,8 +82,12 @@ class JugadorsMutation:
         if data.get("ban"):
             return ErrorJugadorBan(missatge="Jugador amb ban")
 
+        item_id = normalitzar_item_id(input.item_id)
+        if not item_id:
+            return ErrorItemInvalid(missatge="El codi de l'item ha de tenir entre 1 i 3 digits")
+
         item_data = {
-            "item_id": input.item_id,
+            "item_id": item_id,
             "nom_item": input.nom_item,
             "raresa": input.raresa,
         }

@@ -70,3 +70,13 @@ class ErrorNoAutoritzat:
 @strawberry.type
 class ErrorJugadorNoTrobat:
     missatge: str
+
+@strawberry.type
+class ErrorItemInvalid:
+    missatge: str
+
+def normalitzar_item_id(item_id: str) -> str | None:
+    item_id = item_id.strip()
+    if not item_id.isdigit() or len(item_id) > 3:
+        return None
+    return item_id.zfill(3)
