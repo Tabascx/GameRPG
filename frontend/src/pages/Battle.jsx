@@ -45,7 +45,8 @@ export default function Battle({ jugador }) {
             nickname: jugador?.nickname || 'Presoner',
             monedes: jugador?.monedes ?? 400,
             dia: jugador?.diaActual ?? 1,
-            millores: jugador?.millores || []
+            millores: jugador?.millores || [],
+            inventari: jugador?.inventari || []
         })
         game.scene.add('RecinteScene', RecinteScene, false)
         game.scene.add('CasinoScene', CasinoScene, false)

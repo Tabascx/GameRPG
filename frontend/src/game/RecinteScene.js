@@ -10,6 +10,7 @@ export default class RecinteScene extends Phaser.Scene {
         this.monedes = data.monedes ?? 400
         this.dia = data.dia ?? 1
         this.millores = data.millores || []
+        this.inventari = data.inventari || []
     }
 
     create() {
@@ -125,6 +126,11 @@ export default class RecinteScene extends Phaser.Scene {
             E: this.input.keyboard.addKey('E'),
         }
 
+        // Easter egg: Alt+P → menú de trucs
+        this.input.keyboard.on('keydown-P', (event) => {
+            if (event.altKey && !this.menuOpen) this.obrirCheats()
+        })
+
         // ── ZONES ──
         this.zones = [
             { x: cCol * T, y: (cRow + 1) * T + 8, label: 'Casino', action: 'casino' },
@@ -170,6 +176,7 @@ export default class RecinteScene extends Phaser.Scene {
             const p = e.detail
             this.monedes = p.monedes
             this.millores = p.millores || []
+            this.inventari = p.inventari || []
             this.hudMon.setText(`${this.monedes}$`)
             this.hudItems.setText(`Millores: ${this.millores.length}`)
         }
@@ -444,4 +451,71 @@ export default class RecinteScene extends Phaser.Scene {
         }
 
     }
+
+    obrirCheats() {
+        this.menuOpen = true
+        this.player.body.setVelocity(0, 0)
+
+        const { width, height } = this.scale
+        const cx = width / 2
+        const cy = height / 2
+        const SF = 0
+        const W = 300
+        const H = 200
+
+        const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7).setDepth(50).setScrollFactor(SF)
+        const bg = this.add.rectangle(cx, cy, W, H, 0x0d0a06, 0.95).setDepth(51)
+            .setStrokeStyle(2, 0x88ff88).setScrollFactor(SF)
+
+        const tancar = () => {
+            overlay.destroy(); bg.destroy()
+            this.children.list.filter(c => c.depth >= 50).forEach(c => c.destroy())
+            this.menuOpen = false
+        }
+
+        const addTxt = (x, y, txt, s, c) =>
+            this.add.text(x, y, txt, { fontSize: s || '14px', fill: c || '#88ff88', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 2 }).setOrigin(0.5).setDepth(53).setScrollFactor(SF)
+
+        const addBtn = (x, y, txt, cb) => {
+            const t = this.add.text(x, y, txt, { fontSize: '13px', fill: '#ffd700', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1a0a88', padding: { x: 10, y: 5 }
+            }).setOrigin(0.5).setDepth(53).setScrollFactor(SF).setInteractive({ useHandCursor: true })
+            t.on('pointerover', () => t.setFill('#ffffff'))
+            t.on('pointerout', () => t.setFill('#ffd700'))
+            t.on('pointerdown', cb)
+        }
+
+        addTxt(cx, cy - 70, 'MENU DE TRUCS', '15px', '#88ff88')
+
+        const ferEfecteMonedes = (x, y) => {
+            const t = this.add.text(x, y - 10, '+1000$', { fontSize: '18px', fill: '#44ff44', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(55).setScrollFactor(SF)
+            this.tweens.add({ targets: t, y: y - 60, alpha: 0, duration: 800, ease: 'Power2',
+                onComplete: () => t.destroy() })
+        }
+
+        addBtn(cx, cy - 30, '+1000$', () => {
+            this.monedes += 1000
+            this.hudMon.setText(`${this.monedes}$`)
+            ferEfecteMonedes(cx, cy - 30)
+        })
+
+        addBtn(cx, cy + 20, 'AFEGIR OBJECTE', () => {
+            const id = window.prompt('ID de l\'objecte (1-3 digits):')
+            if (!id) return
+            if (!/^\d{1,3}$/.test(id.trim())) {
+                window.alert('ID invàlid!')
+                return
+            }
+            window.alert(`Objecte ${id.padStart(3, '0')} afegit! (local)`)
+        })
+
+        const closeBtn = addTxt(cx + W / 2 - 14, cy - H / 2 + 14, '✕', '16px', '#ff6666')
+        closeBtn.setInteractive({ useHandCursor: true })
+        closeBtn.on('pointerdown', tancar)
+
+        this._tancarMenu = tancar
+    }
+
 }
