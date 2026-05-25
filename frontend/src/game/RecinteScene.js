@@ -7,140 +7,249 @@ export default class RecinteScene extends Phaser.Scene {
 
     init(data) {
         this.nickname = data.nickname || 'Presoner'
-        this.monedes = data.monedes || 400
-        this.dia = data.dia || 1
+        this.monedes = data.monedes ?? 400
+        this.dia = data.dia ?? 1
         this.millores = data.millores || []
-    }
-
-    preload() {
-        // SIN spacing — el tileset es 12x11 tiles contiguos de 16x16
-        this.load.spritesheet('town', '/assets/town.png', {
-            frameWidth: 16,
-            frameHeight: 16
-        })
     }
 
     create() {
         const { width, height } = this.scale
-        const TILE = 32
-        const COLS = 25
-        const ROWS = 20
+        const T = 32
+        const COLS = 13
+        const ROWS = 10
+        const worldW = COLS * T
+        const worldH = ROWS * T
 
-        this.drawRecinte(TILE, COLS, ROWS)
+        this.physics.world.setBounds(0, 0, worldW, worldH)
 
-        // HUD
-        this.add.rectangle(width / 2, 24, width, 48, 0x1a0f00, 0.9).setScrollFactor(0)
-        this.add.text(16, 12, `⚔ ${this.nickname}`, {
-            fontSize: '16px', fill: '#c9a227', fontFamily: 'serif'
-        }).setScrollFactor(0)
-        this.add.text(width / 2, 12, `Dia ${this.dia}`, {
-            fontSize: '16px', fill: '#e8d5a3', fontFamily: 'serif'
-        }).setOrigin(0.5, 0).setScrollFactor(0)
-        this.monText = this.add.text(width - 16, 12, `${this.monedes}$`, {
-            fontSize: '16px', fill: '#ffd700', fontFamily: 'serif'
-        }).setOrigin(1, 0).setScrollFactor(0)
+        // ── MAPA (sprites pixel-art) ──
+        const portonCol = Math.floor(COLS / 2)   // 6
+        const cCol = portonCol
+        const cRow = 2
+
+        // 1. Sòl
+        this.add.tileSprite(T, T, worldW - T * 2, worldH - T * 2, 'ground')
+
+        // 2. Muralles (tileSprite per trams)
+        const addWall = (x, y, w, h) => this.add.tileSprite(x, y, w, h, 'wall')
+        addWall(0, 0, worldW, T)
+        addWall(0, worldH - T, portonCol * T, T)
+        addWall((portonCol + 1) * T, worldH - T, (COLS - portonCol - 1) * T, T)
+        addWall(worldW - T, 0, T, worldH)
+        addWall(0, 0, T, worldH)
+
+        // 3. Camí central (del portó al casino)
+        for (let row = 4; row < ROWS - 1; row++) {
+            this.add.tileSprite((portonCol - 1) * T, row * T, T * 3, T, 'path')
+        }
+
+        // 4. Edificis
+        const casinoX = cCol * T
+        const casinoY = cRow * T + 32
+        this.add.image(casinoX, casinoY, 'casino').setDepth(5)
+        this.add.text(casinoX, casinoY - 32, 'CASINO', {
+            fontSize: '9px', fill: '#ffd700', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(10)
+
+        const botigaX = 2 * T
+        const botigaY = 5 * T
+        this.add.image(botigaX, botigaY, 'botiga').setDepth(5)
+        this.add.text(botigaX, botigaY - 28, 'BOTIGA', {
+            fontSize: '8px', fill: '#ffd700', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(10)
+
+        const forjaX = (COLS - 3) * T
+        const forjaY = 5 * T
+        this.add.image(forjaX, forjaY, 'forja').setDepth(5)
+        this.add.text(forjaX, forjaY - 28, 'FORJA', {
+            fontSize: '8px', fill: '#ffd700', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(10)
+
+        // 5. Arbres (vora les muralles)
+        const arbres = [[1, 1], [COLS - 2, 1], [1, ROWS - 2], [COLS - 2, ROWS - 2]]
+        for (const [ax, ay] of arbres) {
+            this.add.image(ax * T + T / 2, ay * T + T / 2, 'tree').setDepth(5)
+        }
+
+        // 6. Portó
+        this.add.image(portonCol * T + T / 2, worldH - T / 2, 'gate')
+
+        // ── JUGADOR (sprite animat) ──
+        this.player = this.add.sprite(portonCol * T, (ROWS - 2) * T, 'player_0')
+        this.player.setDepth(15)
+
+        // Animació de caminar
+        if (!this.anims.exists('player_walk')) {
+            this.anims.create({
+                key: 'player_walk',
+                frames: [
+                    { key: 'player_0' },
+                    { key: 'player_1' },
+                    { key: 'player_2' },
+                ],
+                frameRate: 7,
+                repeat: -1
+            })
+        }
+
+        this.physics.add.existing(this.player)
+        this.player.body.setSize(10, 10)
+        this.player.body.setOffset(3, 12)
+        this.player.body.setCollideWorldBounds(true)
+
+        // ── MURS (zones de col·lisió invisibles) ──
+        this.walls = this.physics.add.staticGroup()
+        this.walls.add(this.add.zone(worldW / 2, T / 2, worldW, T))
+        this.walls.add(this.add.zone(portonCol * T / 2, worldH - T / 2, portonCol * T, T))
+        const rightW = (COLS - portonCol - 1) * T
+        this.walls.add(this.add.zone((portonCol + 1) * T + rightW / 2, worldH - T / 2, rightW, T))
+        this.walls.add(this.add.zone(worldW - T / 2, worldH / 2, T, worldH))
+        this.walls.add(this.add.zone(T / 2, worldH / 2, T, worldH))
+
+        this.physics.add.collider(this.player, this.walls)
+
+        // ── CÀMERA (estàtica, mostra tot el món centrat) ──
+        this.fitCamera()
+        this.scale.on('resize', () => this.fitCamera())
+
+        // ── INPUT ──
+        this.cursors = this.input.keyboard.createCursorKeys()
+        this.wasd = {
+            W: this.input.keyboard.addKey('W'),
+            A: this.input.keyboard.addKey('A'),
+            S: this.input.keyboard.addKey('S'),
+            D: this.input.keyboard.addKey('D'),
+            E: this.input.keyboard.addKey('E'),
+        }
+
+        // ── ZONES ──
+        this.zones = [
+            { x: cCol * T, y: (cRow + 1) * T + 8, label: 'Casino', action: 'casino' },
+            { x: 2 * T, y: 6 * T, label: 'Botiga', action: 'shop' },
+            { x: (COLS - 3) * T, y: 6 * T, label: 'Forja', action: 'items' },
+        ]
+        this.activeZone = null
+        this.menuOpen = false
+
+        // ── PROMPT ──
+        this.promptBg = this.add.rectangle(0, 0, 100, 20, 0x000000, 0.6).setDepth(15).setVisible(false).setScrollFactor(0)
+        this.promptText = this.add.text(0, 0, '', {
+            fontSize: '15px', fill: '#ffd700', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(16).setVisible(false).setScrollFactor(0)
+
+        // ── HUD ──
+        const hudW = Math.max(width, 800)
+        this.add.tileSprite(0, 0, hudW, 44, 'hud_bg').setScrollFactor(0).setDepth(20)
+
+        this.hudTitle = this.add.text(12, 12, 'IRON GATE', {
+            fontSize: '14px', fill: '#c9a227', fontFamily: 'serif', fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(21)
+
+        this.hudMon = this.add.text(180, 12, `${this.monedes}$`, {
+            fontSize: '14px', fill: '#ffd700', fontFamily: 'serif'
+        }).setScrollFactor(0).setDepth(21)
+
+        this.hudDia = this.add.text(320, 12, `Dia ${this.dia}`, {
+            fontSize: '14px', fill: '#e8d5a3', fontFamily: 'serif'
+        }).setScrollFactor(0).setDepth(21)
+
+        this.hudItems = this.add.text(440, 12, `Millores: ${this.millores.length}`, {
+            fontSize: '14px', fill: '#88ff88', fontFamily: 'serif'
+        }).setScrollFactor(0).setDepth(21)
+
+        this.hudNom = this.add.text(620, 12, this.nickname, {
+            fontSize: '14px', fill: '#c9a227', fontFamily: 'serif'
+        }).setScrollFactor(0).setDepth(21)
+
+        // Escoltar actualitzacions de perfil (compres des de la botiga)
+        this._perfilHandler = (e) => {
+            const p = e.detail
+            this.monedes = p.monedes
+            this.millores = p.millores || []
+            this.hudMon.setText(`${this.monedes}$`)
+            this.hudItems.setText(`Millores: ${this.millores.length}`)
+        }
+        window.addEventListener('perfil-updated', this._perfilHandler)
+
+        this.events.on('shutdown', () => {
+            window.removeEventListener('perfil-updated', this._perfilHandler)
+            window.removeEventListener('perfil-updated', this._shopUpdateHandler)
+        })
     }
 
-    t(col, row, frame, depth = 0) {
-        // Helper: pinta un tile en posición de grid
-        const TILE = 32
-        return this.add.image(
-            col * TILE + TILE / 2,
-            row * TILE + TILE / 2,
-            'town',
-            frame
-        ).setScale(2).setDepth(depth)
+    fitCamera() {
+        const { width, height } = this.scale
+        const worldW = 13 * 32
+        const worldH = 10 * 32
+        const zoom = Math.min(width / worldW, height / worldH)
+        this.cameras.main.setZoom(zoom)
+        this.cameras.main.centerOn(worldW / 2, worldH / 2)
     }
 
-    drawRecinte(TILE, COLS, ROWS) {
-        // ── FRAMES VERIFICADOS PIXEL A PIXEL ──
-        // Hierba:        0, 1, 2
-        // Tierra/arena:  12, 13, 14, 36, 37, 38, 39, 40, 41, 42
-        // Piedra gris:   48, 49, 50, 51, 60, 61, 62, 63
-        // Tejado rojo:   52, 53, 54, 64, 65, 66
-        // Muro piedra:   96, 97, 98, 99, 100, 101, 102, 108, 109, 110, 120, 121, 122
-        // NUNCA usar:    3,4,5,6,7,8,9,10,11,15,16,17,18,20,21,23,27..35,44..47,56,58,59,68..71,74,78,80..83
+    update() {
+        if (this.menuOpen) {
+            this.player.body.setVelocity(0, 0)
+            if (Phaser.Input.Keyboard.JustDown(this.wasd.E)) {
+                this._tancarMenu()
+            }
+            return
+        }
 
-        const GRASS = [0, 1, 2]
-        const PATH  = [36, 37, 38]   // tierra/arena para camino
-        const WALL  = [96, 97, 98]   // muro piedra gris horizontal
-        const WALLV = [120, 121, 122] // muro piedra gris vertical
-        const WALLT = [108, 109, 110] // muro piedra top (más claro)
+        // Evitar reobrir just després de tancar (mateixa pulsació)
+        if (this._menuClosedAt && Date.now() - this._menuClosedAt < 200) return
 
-        // ── 1. SUELO HIERBA (interior) ──
-        for (let row = 1; row < ROWS - 1; row++) {
-            for (let col = 1; col < COLS - 1; col++) {
-                const f = GRASS[(col + row) % 3]
-                this.t(col, row, f, 0)
+        // MOVIMENT + ANIMACIÓ
+        const vx = (this.wasd.A.isDown || this.cursors.left.isDown) ? -1
+            : (this.wasd.D.isDown || this.cursors.right.isDown) ? 1 : 0
+        const vy = (this.wasd.W.isDown || this.cursors.up.isDown) ? -1
+            : (this.wasd.S.isDown || this.cursors.down.isDown) ? 1 : 0
+        this.player.body.setVelocity(vx * 160, vy * 160)
+
+        const moving = vx !== 0 || vy !== 0
+        if (moving && !this.player.anims.isPlaying) {
+            this.player.play('player_walk')
+        } else if (!moving && this.player.anims.isPlaying) {
+            this.player.stop()
+            this.player.setTexture('player_0')
+        }
+
+        // PROXIMITAT
+        this.activeZone = null
+        for (const zone of this.zones) {
+            if (Phaser.Math.Distance.Between(this.player.x, this.player.y, zone.x, zone.y) < 50) {
+                this.activeZone = zone
+                break
             }
         }
 
-        // ── 2. MURALLAS EXTERIORES ──
-        const portonCol = Math.floor(COLS / 2)
-
-        // Muro norte (fila 0)
-        for (let col = 0; col < COLS; col++) {
-            this.t(col, 0, WALLT[col % 3], 5)
-        }
-        // Muro sur (fila ROWS-1) con hueco de 1 tile para portón
-        for (let col = 0; col < COLS; col++) {
-            if (col !== portonCol) {
-                this.t(col, ROWS - 1, WALL[col % 3], 5)
-            }
-        }
-        // Muros este y oeste
-        for (let row = 1; row < ROWS - 1; row++) {
-            this.t(0, row, WALLV[row % 3], 5)
-            this.t(COLS - 1, row, WALLV[row % 3], 5)
+        if (this.activeZone && Phaser.Input.Keyboard.JustDown(this.wasd.E)) {
+            this.obrirMenu(this.activeZone)
         }
 
-        // ── 3. CAMINO CENTRAL (tierra) ──
-        const pathStart = 3
-        const pathEnd = ROWS - 2
-        for (let row = pathStart; row <= pathEnd; row++) {
-            // 3 tiles de ancho: col-1, col, col+1
-            this.t(portonCol - 1, row, PATH[0], 1)
-            this.t(portonCol,     row, PATH[1], 1)
-            this.t(portonCol + 1, row, PATH[2], 1)
+        this.promptText.setVisible(!!this.activeZone)
+        this.promptBg.setVisible(!!this.activeZone)
+        if (this.activeZone) {
+            const cam = this.cameras.main
+            const sx = (this.player.x - cam.scrollX) * cam.zoom
+            const sy = (this.player.y - cam.scrollY - 26) * cam.zoom
+            this.promptText.setPosition(sx, sy)
+            this.promptText.setText(`${this.activeZone.label} [E]`)
+            this.promptBg.setPosition(sx, sy)
+            this.promptBg.setSize(this.promptText.width + 16, 20)
         }
+    }
 
-        // ── 4. CASINO (centro, 3x2 tiles) ──
-        const cCol = Math.floor(COLS / 2)
-        const cRow = Math.floor(ROWS / 2) - 1
+    obrirMenu(zone) {
+        this.menuOpen = true
+        this.player.body.setVelocity(0, 0)
 
-        // Tejado (fila superior): frames rojos 52, 53, 54
-        this.t(cCol - 1, cRow,     52, 4)
-        this.t(cCol,     cRow,     53, 4)
-        this.t(cCol + 1, cRow,     54, 4)
-
-        // Pared (fila inferior): piedra gris 60, 61, 62
-        this.t(cCol - 1, cRow + 1, 60, 4)
-        this.t(cCol,     cRow + 1, 61, 4)
-        this.t(cCol + 1, cRow + 1, 62, 4)
-
-        // Tejado segunda fila: 64, 65, 66
-        this.t(cCol - 1, cRow + 2, 64, 4)
-        this.t(cCol,     cRow + 2, 65, 4)
-        this.t(cCol + 1, cRow + 2, 66, 4)
-
-        // Letrero
-        this.add.text(
-            cCol * TILE + TILE / 2,
-            (cRow - 1) * TILE + TILE / 2,
-            'CASINO',
-            { fontSize: '14px', fill: '#ffd700', fontFamily: 'serif', stroke: '#000', strokeThickness: 3 }
-        ).setOrigin(0.5).setDepth(6)
-
-        // Zona interactiva casino
-        const casinoZone = this.add.zone(
-            cCol * TILE + TILE / 2,
-            (cRow + 1) * TILE + TILE / 2,
-            TILE * 3, TILE * 3
-        ).setInteractive({ useHandCursor: true }).setDepth(6)
-
-        casinoZone.on('pointerdown', () => {
-            this.cameras.main.fade(500, 0, 0, 0)
-            this.time.delayedCall(500, () => {
+        if (zone.action === 'casino') {
+            this.cameras.main.fade(400, 0, 0, 0)
+            this.time.delayedCall(400, () => {
                 this.scene.start('CasinoScene', {
                     nickname: this.nickname,
                     monedes: this.monedes,
@@ -148,46 +257,191 @@ export default class RecinteScene extends Phaser.Scene {
                     millores: this.millores
                 })
             })
-        })
+            return
+        }
 
-        // ── 5. EDIFICIOS LATERALES (2x2) ──
-        // Izquierdo
-        const lCol = 4, lRow = Math.floor(ROWS / 2) - 1
-        this.t(lCol,     lRow,     52, 4)
-        this.t(lCol + 1, lRow,     54, 4)
-        this.t(lCol,     lRow + 1, 60, 4)
-        this.t(lCol + 1, lRow + 1, 62, 4)
+        // Menú cascada transparent (scrollFactor=0 = sense zoom)
+        const { width, height } = this.scale
+        const cx = width / 2
+        const cy = height / 2
+        const SF = 0
 
-        // Derecho
-        const rCol = COLS - 6, rRow = Math.floor(ROWS / 2) - 1
-        this.t(rCol,     rRow,     52, 4)
-        this.t(rCol + 1, rRow,     54, 4)
-        this.t(rCol,     rRow + 1, 60, 4)
-        this.t(rCol + 1, rRow + 1, 62, 4)
+        const isShop = zone.action === 'shop'
+        const bgW = isShop ? 380 : 280
+        const bgH = isShop ? 260 : 220
+        const halfW = bgW / 2
+        const halfH = bgH / 2
 
-        // ── 6. PORTÓN (centro muro sur) ──
-        const porton = this.t(portonCol, ROWS - 1, 99, 6)
-        porton.setInteractive({ useHandCursor: true })
-        this.tweens.add({ targets: porton, alpha: { from: 1, to: 0.7 }, duration: 900, yoyo: true, repeat: -1 })
-        porton.on('pointerover', () => porton.setTint(0xffff88))
-        porton.on('pointerout', () => porton.clearTint())
-        porton.on('pointerdown', () => {
-            this.cameras.main.fade(500, 0, 0, 0)
-            this.time.delayedCall(500, () => {
-                this.scene.start('CasinoScene', {
-                    nickname: this.nickname,
-                    monedes: this.monedes,
-                    dia: this.dia,
-                    millores: this.millores
+        const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7).setDepth(50).setScrollFactor(SF)
+        const bg = this.add.rectangle(cx, cy, bgW, bgH, 0x1a1208, 0.92).setDepth(51)
+            .setStrokeStyle(2, 0xc9a227).setScrollFactor(SF)
+
+        const tancarMenu = () => {
+            overlay.destroy()
+            bg.destroy()
+            this.children.list.filter(c => c.depth >= 50).forEach(c => c.destroy())
+            this.menuContent = null
+            this.menuOpen = false
+            this._menuClosedAt = Date.now()
+            window.removeEventListener('perfil-updated', this._shopUpdateHandler)
+        }
+        this._tancarMenu = tancarMenu
+
+        // Contenidor per al contingut del menú (per poder fer rebuild)
+        this.menuContent = this.add.container(0, 0).setDepth(52)
+        const mc = this.menuContent
+
+        // Creu tancar (dreta superior, dins del marc)
+        const closeBtn = this.add.text(cx + halfW - 14, cy - halfH + 12, '✕', {
+            fontSize: '16px', fill: '#ff6666', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(53).setInteractive({ useHandCursor: true }).setScrollFactor(SF)
+
+        const tipClose = this.add.text(closeBtn.x - 52, closeBtn.y, 'Tancar', {
+            fontSize: '12px', fill: '#ffffff', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1208cc',
+            padding: { x: 6, y: 2 }
+        }).setOrigin(1, 0.5).setDepth(53).setScrollFactor(SF).setAlpha(0)
+
+        closeBtn.on('pointerover', () => { closeBtn.setFill('#ff0000'); tipClose.setAlpha(1) })
+        closeBtn.on('pointerout', () => { closeBtn.setFill('#ff6666'); tipClose.setAlpha(0) })
+        closeBtn.on('pointerdown', this._tancarMenu)
+
+        // Títol (dalt del menú, alineat esquerra)
+        mc.add(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
+            fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 2
+        }).setOrigin(0, 0).setScrollFactor(SF))
+
+        if (isShop) {
+            const renderShop = () => {
+                // Neteja contingut anterior del contenidor
+                mc.removeAll(true)
+
+                // Torna a afegir el títol
+                mc.add(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
+                    fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
+                    stroke: '#000', strokeThickness: 2
+                }).setOrigin(0, 0).setScrollFactor(SF))
+
+                // Compatibilitat: "muralla" → "seguro"
+                if (this.millores.some(m => m.nom === 'muralla') && !this.millores.some(m => m.nom === 'seguro')) {
+                    this.millores.push({ nom: 'seguro', nivell: 1 })
+                }
+
+                const UPGRADES = [
+                    {
+                        nom: 'seguro', label: 'Assegurança', max: 3,
+                        desc: (lvl) => `Cobreix ${[25, 35, 50][lvl - 1] || 0}% de perdues`,
+                        cost: (lvl) => 50 + (lvl - 1) * 100,
+                        info: (lvl) => {
+                            const pct = [25, 35, 50]
+                            const txt = [`Nivell 1: 25% cobertura (50$)`, `Nivell 2: 35% cobertura (150$)`, `Nivell 3: 50% cobertura (300$)`]
+                            if (lvl === 0) return txt.join('\n')
+                            if (lvl >= 3) return `Actual: ${pct[lvl-1]}%\nMàxim assolit!`
+                            return `Actual: ${pct[lvl-1]}%\nSegüent: ${pct[lvl]}% (${50 + lvl * 100}$)`
+                        }
+                    },
+                    {
+                        nom: 'taberna', label: 'Taberna', max: 10,
+                        desc: (lvl) => `+${lvl * 10}% guanys al final`,
+                        cost: (lvl) => 50 + (lvl - 1) * 10,
+                        info: (lvl) => {
+                            if (lvl === 0) return `Nivell 1: +10% guanys (50$)\n...fins a +100% al nivell 10`
+                            if (lvl >= 10) return `Actual: +${lvl*10}%\nMàxim assolit!`
+                            return `Actual: +${lvl*10}%\nSegüent: +${(lvl+1)*10}% (${50 + lvl * 10}$)`
+                        }
+                    },
+                ]
+
+                UPGRADES.forEach((upg, idx) => {
+                    const rowY = cy - halfH + 52 + idx * 85
+                    const owned = this.millores.find(m => m.nom === upg.nom)
+                    const lvl = owned?.nivell || 0
+                    const margin = 20
+                    const rowW = bgW - margin * 2
+
+                    // Fons de fila (interactiu per al tooltip)
+                    const rowBg = this.add.rectangle(cx, rowY + 10, rowW, 70, 0x000000, 0.3)
+                        .setScrollFactor(SF).setInteractive({ useHandCursor: true })
+                    mc.add(rowBg)
+
+                    // Tooltip descriptiu (amagat per defecte)
+                    const tipW = 170
+                    const tip = this.add.text(cx, rowY + 80, upg.info(lvl), {
+                        fontSize: '9px', fill: '#e8d5a3', fontFamily: 'serif',
+                        stroke: '#000', strokeThickness: 2, backgroundColor: '#0d0a06cc',
+                        padding: { x: 6, y: 4 }, lineSpacing: 2
+                    }).setOrigin(0.5, 0).setScrollFactor(SF).setDepth(55).setAlpha(0)
+
+                    rowBg.on('pointerover', () => {
+                        tip.setText(upg.info(lvl))
+                        tip.setAlpha(1)
+                    })
+                    rowBg.on('pointerout', () => tip.setAlpha(0))
+                    mc.add(tip)
+
+                    // Nom de la millora
+                    mc.add(this.add.text(cx - rowW / 2, rowY, upg.label, {
+                        fontSize: '13px', fill: '#c9a227', fontFamily: 'serif',
+                        stroke: '#000', strokeThickness: 2
+                    }).setOrigin(0, 0).setScrollFactor(SF))
+
+                    // Nivell actual / efecte
+                    const effectText = lvl > 0 ? upg.desc(lvl) : 'No comprada'
+                    mc.add(this.add.text(cx - rowW / 2, rowY + 18, effectText, {
+                        fontSize: '10px', fill: lvl > 0 ? '#88ff88' : '#888', fontFamily: 'serif',
+                        stroke: '#000', strokeThickness: 1
+                    }).setOrigin(0, 0).setScrollFactor(SF))
+
+                    // Quadres de nivell
+                    const boxSize = 14
+                    const gap = 4
+                    const boxStartX = cx - rowW / 2
+                    for (let i = 0; i < upg.max; i++) {
+                        mc.add(this.add.rectangle(boxStartX + boxSize / 2 + i * (boxSize + gap), rowY + 48, boxSize, boxSize,
+                            i < lvl ? 0xc9a227 : 0x333333
+                        ).setScrollFactor(SF).setStrokeStyle(1, i < lvl ? 0xc9a227 : 0x666666))
+                    }
+
+                    // Nivell X/Y text
+                    mc.add(this.add.text(boxStartX + upg.max * (boxSize + gap) + 8, rowY + 40, `${lvl}/${upg.max}`, {
+                        fontSize: '10px', fill: '#e8d5a3', fontFamily: 'serif',
+                        stroke: '#000', strokeThickness: 1
+                    }).setOrigin(0, 0).setScrollFactor(SF))
+
+                    // Botó compra / MAX
+                    if (lvl < upg.max) {
+                        const cost = upg.cost(lvl + 1)
+                        const btn = this.add.text(cx + rowW / 2, rowY + 10, `+${cost}$`, {
+                            fontSize: '12px', fill: '#ffd700', fontFamily: 'serif',
+                            stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1208aa',
+                            padding: { x: 8, y: 4 }
+                        }).setOrigin(1, 0).setScrollFactor(SF).setInteractive({ useHandCursor: true })
+                        btn.on('pointerover', () => btn.setFill('#ffffff'))
+                        btn.on('pointerout', () => btn.setFill('#ffd700'))
+                        btn.on('pointerdown', () => {
+                            window.dispatchEvent(new CustomEvent('comprar-millora', {
+                                detail: { nom: upg.nom, descripcio: `${upg.label} nivell ${lvl + 1}` }
+                            }))
+                        })
+                        mc.add(btn)
+                    } else {
+                        mc.add(this.add.text(cx + rowW / 2, rowY + 10, 'MAX', {
+                            fontSize: '12px', fill: '#44ff44', fontFamily: 'serif',
+                            stroke: '#000', strokeThickness: 2
+                        }).setOrigin(1, 0).setScrollFactor(SF))
+                    }
                 })
-            })
-        })
+            }
 
-        // ── 7. ÁRBOLES EN ESQUINAS (frame 19 = verde sólido, sin negro) ──
-        const treeFrame = 19 // verde sólido verificado, dark=0.04
-        this.t(2,         2,         treeFrame, 3)
-        this.t(COLS - 3,  2,         treeFrame, 3)
-        this.t(2,         ROWS - 3,  treeFrame, 3)
-        this.t(COLS - 3,  ROWS - 3,  treeFrame, 3)
+            renderShop()
+
+            this._shopUpdateHandler = () => {
+                if (this.menuOpen && this.menuContent) renderShop()
+            }
+            window.addEventListener('perfil-updated', this._shopUpdateHandler)
+        }
+
     }
 }

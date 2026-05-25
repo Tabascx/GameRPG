@@ -136,7 +136,8 @@ export default class SlotsScene extends Phaser.Scene {
             missatge = `✨ DOS IGUALS! +${guanyancia}$`
             this.resultText.setFill('#00ff88')
         } else {
-            const seguro = this.millores.includes('muralla') ? 0.7 : 0.4
+            const seg = Array.isArray(this.millores) && this.millores.find(m => m.nom === 'seguro')
+            const seguro = seg ? [0.25, 0.35, 0.5][seg.nivell - 1] || 0.5 : 0
             const perdua = this.aposta * (1 - seguro)
             guanyancia = -perdua
             missatge = `💀 PERDS -${Math.round(perdua)}$`

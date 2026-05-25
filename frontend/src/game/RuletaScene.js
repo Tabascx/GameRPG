@@ -194,7 +194,8 @@ export default class RuletaScene extends Phaser.Scene {
             this.monedes += guanyancia
             this.resultText.setText(`✨ GUANYES +${guanyancia}$!`).setFill('#00ff88')
         } else {
-            const seguro = this.millores.includes('muralla') ? 0.7 : 0.4
+            const seg = Array.isArray(this.millores) && this.millores.find(m => m.nom === 'seguro')
+            const seguro = seg ? [0.25, 0.35, 0.5][seg.nivell - 1] || 0.5 : 0
             const perdua = Math.round(this.aposta * (1 - seguro))
             this.monedes -= perdua
             this.resultText.setText(`💀 PERDS -${perdua}$`).setFill('#ff4444')

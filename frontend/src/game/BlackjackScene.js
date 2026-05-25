@@ -164,7 +164,8 @@ export default class BlackjackScene extends Phaser.Scene {
             this.guanyades++
             this.resultText.setText('✨ GUANYES!').setFill('#00ff88')
         } else {
-            const seguro = this.millores.includes('muralla') ? 0.7 : 0.4
+            const seg = Array.isArray(this.millores) && this.millores.find(m => m.nom === 'seguro')
+            const seguro = seg ? [0.25, 0.35, 0.5][seg.nivell - 1] || 0.5 : 0
             const perdua = this.valorJugador > 21
                 ? this.aposta
                 : this.aposta * (1 - seguro)

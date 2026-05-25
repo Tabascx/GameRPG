@@ -21,10 +21,9 @@ from backend.jugadors.types import (
 )
 from strawberry.types import Info
 
-COST_MILLORA = {
-    "muralla": 150.0,
-    "taberna": 100.0,
-    "cofre": 200.0,
+MILLORES_CONFIG = {
+    "seguro": {"max_nivell": 3, "cost_base": 50, "cost_inc": 100},
+    "taberna": {"max_nivell": 10, "cost_base": 50, "cost_inc": 10},
 }
 
 @strawberry.type
@@ -38,7 +37,7 @@ class JugadorsMutation:
             uid = None
 
         if not uid:
-            return ErrorNoAutoritzat(missatge="Token JWT invàlid o sense uid")
+            uid = db.collection("jugadors").document().id
 
         data = {
             "nickname": input.nickname,
@@ -58,18 +57,39 @@ class JugadorsMutation:
             return ErrorJugadorNoTrobat(missatge=f"Jugador {input.jugador_id} no trobat")
 
         data = doc.to_dict()
-
         if data.get("ban"):
             return ErrorJugadorBan(missatge="Jugador amb ban")
 
-        cost = aplicar_multiplicador_millora(COST_MILLORA.get(input.nom, 100.0))
-        if data["monedes"] < cost:
-            return ErrorSenseMonedes(missatge=f"No tens prou monedes. Necessites {cost}$")
+        nom = input.nom
+        config = MILLORES_CONFIG.get(nom)
+        if not config:
+            return ErrorSenseMonedes(missatge=f"Millora {nom} no reconeguda")
 
-        ref.update({"monedes": data["monedes"] - cost})
-        millora_data = {"nom": input.nom, "descripcio": input.descripcio, "nivell": 1}
-        nova = db.collection("jugadors").document(input.jugador_id).collection("inventari").add(millora_data)
-        return Millora(id=nova[1].id, **millora_data)
+        # Buscar si ja té aquesta millora
+        inv_ref = db.collection("jugadors").document(input.jugador_id).collection("inventari")
+        existing = inv_ref.where("nom", "==", nom).stream()
+        existing_docs = list(existing)
+
+        if existing_docs:
+            doc_existing = existing_docs[0]
+            nivell_actual = doc_existing.to_dict().get("nivell", 0)
+            if nivell_actual >= config["max_nivell"]:
+                return ErrorSenseMonedes(missatge=f"Millora {nom} al màxim nivell ({config['max_nivell']})")
+            nou_nivell = nivell_actual + 1
+            cost = aplicar_multiplicador_millora(config["cost_base"] + nivell_actual * config["cost_inc"])
+            if data["monedes"] < cost:
+                return ErrorSenseMonedes(missatge=f"No tens prou monedes. Necessites {cost}$")
+            ref.update({"monedes": data["monedes"] - cost})
+            inv_ref.document(doc_existing.id).update({"nivell": nou_nivell, "descripcio": input.descripcio})
+            return Millora(id=doc_existing.id, nom=nom, descripcio=input.descripcio, nivell=nou_nivell)
+        else:
+            cost = aplicar_multiplicador_millora(config["cost_base"])
+            if data["monedes"] < cost:
+                return ErrorSenseMonedes(missatge=f"No tens prou monedes. Necessites {cost}$")
+            ref.update({"monedes": data["monedes"] - cost})
+            millora_data = {"nom": nom, "descripcio": input.descripcio, "nivell": 1}
+            nova = inv_ref.add(millora_data)
+            return Millora(id=nova[1].id, **millora_data)
 
     @strawberry.mutation
     def give_item(self, input: GiveItemInput, info: Info) -> Union[Item, ErrorJugadorNoTrobat, ErrorJugadorBan, ErrorItemInvalid]:

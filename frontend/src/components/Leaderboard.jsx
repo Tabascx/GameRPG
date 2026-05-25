@@ -15,6 +15,7 @@ export default function Leaderboard() {
                     <tr>
                         <th>#</th>
                         <th>Pilot</th>
+                        <th>Nivell</th>
                         <th>Monedes</th>
                         <th>Dia</th>
                     </tr>
@@ -24,6 +25,7 @@ export default function Leaderboard() {
                         <tr key={j.id}>
                             <td>{i + 1}</td>
                             <td>{j.nickname}</td>
+                            <td>{j.nivell}</td>
                             <td>{j.monedes}$</td>
                             <td>{j.diaActual}</td>
                         </tr>

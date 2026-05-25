@@ -5,13 +5,21 @@ export const GET_PERFIL = gql`
     perfilJugador(id: $id) {
       id
       nickname
+      nivell
       monedes
       diaActual
+      ban
       millores {
         id
         nom
         descripcio
         nivell
+      }
+      inventari {
+        id
+        itemId
+        nomItem
+        raresa
       }
     }
   }
@@ -22,8 +30,20 @@ export const GET_LEADERBOARD = gql`
     leaderboard {
       id
       nickname
+      nivell
       monedes
       diaActual
+      ban
+    }
+  }
+`;
+
+export const GET_CONFIG_GLOBALS = gql`
+  query GetConfigGlobals {
+    configGlobals {
+      multiplicadorMillora
+      multiplicadorSeguro
+      multiplicadorProbabilitat
     }
   }
 `;
