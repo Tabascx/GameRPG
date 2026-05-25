@@ -4,6 +4,7 @@ const JOCS = [
     { nom: 'Blackjack', escena: 'BlackjackScene', color: 0x1a3d06 },
     { nom: 'Ruleta', escena: 'RuletaScene', color: 0x3d1a00 },
     { nom: 'Slots', escena: 'SlotsScene', color: 0x1a0d3d },
+    { nom: 'Cara o Creu', escena: 'MonedaScene', color: 0x3d3d06 },
 ]
 
 export default class CasinoScene extends Phaser.Scene {

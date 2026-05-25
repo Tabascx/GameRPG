@@ -8,6 +8,7 @@ import CasinoScene from '../game/CasinoScene'
 import BlackjackScene from '../game/BlackjackScene'
 import RuletaScene from '../game/RuletaScene'
 import SlotsScene from '../game/SlotsScene'
+import MonedaScene from '../game/MonedaScene'
 
 export default function Battle({ jugador }) {
     const gameRef = useRef(null)
@@ -53,6 +54,7 @@ export default function Battle({ jugador }) {
         game.scene.add('BlackjackScene', BlackjackScene, false)
         game.scene.add('RuletaScene', RuletaScene, false)
         game.scene.add('SlotsScene', SlotsScene, false)
+        game.scene.add('MonedaScene', MonedaScene, false)
 
         gameRef.current = game
 

@@ -171,6 +171,11 @@ export default class RecinteScene extends Phaser.Scene {
             fontSize: '14px', fill: '#c9a227', fontFamily: 'serif'
         }).setScrollFactor(0).setDepth(21)
 
+        // Inventari amb B
+        this.input.keyboard.on('keydown-B', () => {
+            if (!this.menuOpen) this.obrirInventari()
+        })
+
         // Escoltar actualitzacions de perfil (compres des de la botiga)
         this._perfilHandler = (e) => {
             const p = e.detail
@@ -267,11 +272,10 @@ export default class RecinteScene extends Phaser.Scene {
             return
         }
 
-        // Menú cascada transparent (scrollFactor=0 = sense zoom)
+        // Menú en pantalla amb scrollFactor(0) — TOT directe a l'escena, res de contenidor
         const { width, height } = this.scale
         const cx = width / 2
         const cy = height / 2
-        const SF = 0
 
         const isShop = zone.action === 'shop'
         const bgW = isShop ? 380 : 280
@@ -279,59 +283,59 @@ export default class RecinteScene extends Phaser.Scene {
         const halfW = bgW / 2
         const halfH = bgH / 2
 
-        const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7).setDepth(50).setScrollFactor(SF)
+        const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7)
+            .setDepth(50).setScrollFactor(0)
         const bg = this.add.rectangle(cx, cy, bgW, bgH, 0x1a1208, 0.92).setDepth(51)
-            .setStrokeStyle(2, 0xc9a227).setScrollFactor(SF)
+            .setStrokeStyle(2, 0xc9a227).setScrollFactor(0)
 
-        const tancarMenu = () => {
-            overlay.destroy()
-            bg.destroy()
-            this.children.list.filter(c => c.depth >= 50).forEach(c => c.destroy())
-            this.menuContent = null
+        // Llista d'elements del menú (per neteja i rebuild)
+        const menuItems = [overlay, bg]
+        const addItem = (obj) => { obj.setScrollFactor(0); menuItems.push(obj); return obj }
+
+        const destroyMenu = () => {
+            menuItems.forEach(c => c.destroy())
+            window.removeEventListener('perfil-updated', this._shopUpdateHandler)
             this.menuOpen = false
             this._menuClosedAt = Date.now()
-            window.removeEventListener('perfil-updated', this._shopUpdateHandler)
         }
-        this._tancarMenu = tancarMenu
+        this._tancarMenu = destroyMenu
 
-        // Contenidor per al contingut del menú (per poder fer rebuild)
-        this.menuContent = this.add.container(0, 0).setDepth(52)
-        const mc = this.menuContent
-
-        // Creu tancar (dreta superior, dins del marc)
-        const closeBtn = this.add.text(cx + halfW - 14, cy - halfH + 12, '✕', {
+        // Creu tancar
+        const closeBtn = addItem(this.add.text(cx + halfW - 14, cy - halfH + 12, '✕', {
             fontSize: '16px', fill: '#ff6666', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 2
-        }).setOrigin(0.5).setDepth(53).setInteractive({ useHandCursor: true }).setScrollFactor(SF)
+        }).setOrigin(0.5).setDepth(53).setInteractive({ useHandCursor: true }))
 
-        const tipClose = this.add.text(closeBtn.x - 52, closeBtn.y, 'Tancar', {
+        const tipClose = addItem(this.add.text(closeBtn.x - 52, closeBtn.y, 'Tancar', {
             fontSize: '12px', fill: '#ffffff', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1208cc',
             padding: { x: 6, y: 2 }
-        }).setOrigin(1, 0.5).setDepth(53).setScrollFactor(SF).setAlpha(0)
+        }).setOrigin(1, 0.5).setDepth(53).setAlpha(0))
 
         closeBtn.on('pointerover', () => { closeBtn.setFill('#ff0000'); tipClose.setAlpha(1) })
         closeBtn.on('pointerout', () => { closeBtn.setFill('#ff6666'); tipClose.setAlpha(0) })
-        closeBtn.on('pointerdown', this._tancarMenu)
+        closeBtn.on('pointerdown', destroyMenu)
 
-        // Títol (dalt del menú, alineat esquerra)
-        mc.add(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
+        // Títol
+        addItem(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
             fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 2
-        }).setOrigin(0, 0).setScrollFactor(SF))
+        }).setOrigin(0, 0).setDepth(52))
 
         if (isShop) {
             const renderShop = () => {
-                // Neteja contingut anterior del contenidor
-                mc.removeAll(true)
+                // Eliminar elements de botiga vells (depth 52-99, excloent overlay/bg/tancar que son depth 50-51 i 53)
+                menuItems.filter(c => c.depth >= 52 && c.depth < 60 && c !== closeBtn && c !== tipClose).forEach(c => {
+                    const idx = menuItems.indexOf(c)
+                    if (idx >= 0) menuItems.splice(idx, 1)
+                    c.destroy()
+                })
 
-                // Torna a afegir el títol
-                mc.add(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
+                addItem(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
                     fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
                     stroke: '#000', strokeThickness: 2
-                }).setOrigin(0, 0).setScrollFactor(SF))
+                }).setOrigin(0, 0).setDepth(52))
 
-                // Compatibilitat: "muralla" → "seguro"
                 if (this.millores.some(m => m.nom === 'muralla') && !this.millores.some(m => m.nom === 'seguro')) {
                     this.millores.push({ nom: 'seguro', nivell: 1 })
                 }
@@ -368,76 +372,103 @@ export default class RecinteScene extends Phaser.Scene {
                     const margin = 20
                     const rowW = bgW - margin * 2
 
-                    // Fons de fila (interactiu per al tooltip)
-                    const rowBg = this.add.rectangle(cx, rowY + 10, rowW, 70, 0x000000, 0.3)
-                        .setScrollFactor(SF).setInteractive({ useHandCursor: true })
-                    mc.add(rowBg)
+                    // Fons de fila (interactiu)
+                    const rowBg = addItem(this.add.rectangle(cx, rowY + 10, rowW, 70, 0x000000, 0.3)
+                        .setInteractive({ useHandCursor: true }).setDepth(52))
 
-                    // Tooltip descriptiu (amagat per defecte)
-                    const tipW = 170
-                    const tip = this.add.text(cx, rowY + 80, upg.info(lvl), {
+                    // Tooltip descriptiu
+                    const tip = addItem(this.add.text(cx, rowY + 80, upg.info(lvl), {
                         fontSize: '9px', fill: '#e8d5a3', fontFamily: 'serif',
                         stroke: '#000', strokeThickness: 2, backgroundColor: '#0d0a06cc',
                         padding: { x: 6, y: 4 }, lineSpacing: 2
-                    }).setOrigin(0.5, 0).setScrollFactor(SF).setDepth(55).setAlpha(0)
-
-                    rowBg.on('pointerover', () => {
-                        tip.setText(upg.info(lvl))
-                        tip.setAlpha(1)
-                    })
+                    }).setOrigin(0.5, 0).setDepth(55).setAlpha(0))
+                    rowBg.on('pointerover', () => { tip.setText(upg.info(lvl)); tip.setAlpha(1) })
                     rowBg.on('pointerout', () => tip.setAlpha(0))
-                    mc.add(tip)
 
-                    // Nom de la millora
-                    mc.add(this.add.text(cx - rowW / 2, rowY, upg.label, {
+                    // Nom
+                    addItem(this.add.text(cx - rowW / 2, rowY, upg.label, {
                         fontSize: '13px', fill: '#c9a227', fontFamily: 'serif',
                         stroke: '#000', strokeThickness: 2
-                    }).setOrigin(0, 0).setScrollFactor(SF))
+                    }).setOrigin(0, 0).setDepth(52))
 
-                    // Nivell actual / efecte
+                    // Efecte
                     const effectText = lvl > 0 ? upg.desc(lvl) : 'No comprada'
-                    mc.add(this.add.text(cx - rowW / 2, rowY + 18, effectText, {
+                    addItem(this.add.text(cx - rowW / 2, rowY + 18, effectText, {
                         fontSize: '10px', fill: lvl > 0 ? '#88ff88' : '#888', fontFamily: 'serif',
                         stroke: '#000', strokeThickness: 1
-                    }).setOrigin(0, 0).setScrollFactor(SF))
+                    }).setOrigin(0, 0).setDepth(52))
 
                     // Quadres de nivell
                     const boxSize = 14
                     const gap = 4
                     const boxStartX = cx - rowW / 2
                     for (let i = 0; i < upg.max; i++) {
-                        mc.add(this.add.rectangle(boxStartX + boxSize / 2 + i * (boxSize + gap), rowY + 48, boxSize, boxSize,
+                        addItem(this.add.rectangle(boxStartX + boxSize / 2 + i * (boxSize + gap), rowY + 48, boxSize, boxSize,
                             i < lvl ? 0xc9a227 : 0x333333
-                        ).setScrollFactor(SF).setStrokeStyle(1, i < lvl ? 0xc9a227 : 0x666666))
+                        ).setStrokeStyle(1, i < lvl ? 0xc9a227 : 0x666666).setDepth(52))
                     }
 
-                    // Nivell X/Y text
-                    mc.add(this.add.text(boxStartX + upg.max * (boxSize + gap) + 8, rowY + 40, `${lvl}/${upg.max}`, {
+                    // Nivell X/Y
+                    addItem(this.add.text(boxStartX + upg.max * (boxSize + gap) + 8, rowY + 40, `${lvl}/${upg.max}`, {
                         fontSize: '10px', fill: '#e8d5a3', fontFamily: 'serif',
                         stroke: '#000', strokeThickness: 1
-                    }).setOrigin(0, 0).setScrollFactor(SF))
+                    }).setOrigin(0, 0).setDepth(52))
 
                     // Botó compra / MAX
                     if (lvl < upg.max) {
                         const cost = upg.cost(lvl + 1)
-                        const btn = this.add.text(cx + rowW / 2, rowY + 10, `+${cost}$`, {
+                        const btn = addItem(this.add.text(cx + rowW / 2, rowY + 10, `+${cost}$`, {
                             fontSize: '12px', fill: '#ffd700', fontFamily: 'serif',
                             stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1208aa',
                             padding: { x: 8, y: 4 }
-                        }).setOrigin(1, 0).setScrollFactor(SF).setInteractive({ useHandCursor: true })
+                        }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setDepth(52))
                         btn.on('pointerover', () => btn.setFill('#ffffff'))
                         btn.on('pointerout', () => btn.setFill('#ffd700'))
                         btn.on('pointerdown', () => {
+                            const cost = upg.cost(lvl + 1)
+                            if (this.monedes < cost) {
+                                // Botó insuficient: tremolor + missatge
+                                const origX = btn.x
+                                this.tweens.add({
+                                    targets: btn, x: origX - 3, duration: 40, yoyo: true,
+                                    repeat: 5, ease: 'Sine.easeInOut',
+                                    onComplete: () => btn.x = origX
+                                })
+                                btn.setFill('#ff4444')
+                                this.time.delayedCall(400, () => btn.setFill('#ffd700'))
+                                const msg = this.add.text(cx + rowW / 2, rowY + 35, 'FONS INSUFICIENTS!', {
+                                    fontSize: '10px', fill: '#ff4444', fontFamily: 'serif',
+                                    stroke: '#000', strokeThickness: 2
+                                }).setOrigin(0.5).setDepth(59).setScrollFactor(0)
+                                this.tweens.add({
+                                    targets: msg, alpha: 0, y: msg.y + 20, duration: 1500,
+                                    delay: 300, ease: 'Power2',
+                                    onComplete: () => msg.destroy()
+                                })
+                                return
+                            }
+                            this.monedes -= cost
+                            const existing = this.millores.find(m => m.nom === upg.nom)
+                            if (existing) existing.nivell++
+                            else this.millores.push({ nom: upg.nom, nivell: 1 })
+                            this.hudMon.setText(`${this.monedes}$`)
+                            this.hudItems.setText(`Millores: ${this.millores.length}`)
+                            renderShop()
+                            const ef = this.add.text(cx + rowW / 2, rowY + 10, `-${cost}$`, {
+                                fontSize: '16px', fill: '#ff4444', fontFamily: 'serif',
+                                stroke: '#000', strokeThickness: 3
+                            }).setOrigin(0.5).setDepth(59).setScrollFactor(0)
+                            this.tweens.add({ targets: ef, y: ef.y + 30, alpha: 0, duration: 800, ease: 'Power2',
+                                onComplete: () => ef.destroy() })
                             window.dispatchEvent(new CustomEvent('comprar-millora', {
                                 detail: { nom: upg.nom, descripcio: `${upg.label} nivell ${lvl + 1}` }
                             }))
                         })
-                        mc.add(btn)
                     } else {
-                        mc.add(this.add.text(cx + rowW / 2, rowY + 10, 'MAX', {
+                        addItem(this.add.text(cx + rowW / 2, rowY + 10, 'MAX', {
                             fontSize: '12px', fill: '#44ff44', fontFamily: 'serif',
                             stroke: '#000', strokeThickness: 2
-                        }).setOrigin(1, 0).setScrollFactor(SF))
+                        }).setOrigin(1, 0).setDepth(52))
                     }
                 })
             }
@@ -445,11 +476,104 @@ export default class RecinteScene extends Phaser.Scene {
             renderShop()
 
             this._shopUpdateHandler = () => {
-                if (this.menuOpen && this.menuContent) renderShop()
+                if (this.menuOpen) renderShop()
             }
             window.addEventListener('perfil-updated', this._shopUpdateHandler)
         }
 
+    }
+
+    obrirInventari() {
+        this.menuOpen = true
+        this.player.body.setVelocity(0, 0)
+
+        const { width, height } = this.scale
+        const cx = width / 2
+        const cy = height / 2
+        const SF = 0
+        const cols = 6
+        const rows = 4
+        const slots = cols * rows
+        let pagina = 0
+
+        const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7).setDepth(50).setScrollFactor(SF)
+
+        const total = this.inventari.length || 0
+        const maxPag = Math.max(0, Math.ceil(total / slots) - 1)
+
+        const tancar = () => {
+            overlay.destroy(); this.children.list.filter(c => c.depth >= 50).forEach(c => c.destroy())
+            this.menuOpen = false
+        }
+
+        const render = () => {
+            this.children.list.filter(c => c.depth >= 50 && c !== overlay).forEach(c => c.destroy())
+
+            const panelW = Math.min(440, width * 0.8)
+            const panelH = Math.min(320, height * 0.6)
+            const px = cx - panelW / 2
+            const py = cy - panelH / 2
+
+            const bg = this.add.rectangle(cx, cy, panelW, panelH, 0x0d0a06, 0.95).setDepth(51)
+                .setStrokeStyle(2, 0xc9a227).setScrollFactor(SF)
+
+            const txt = (x, y, s, c, o) => this.add.text(x, y, s,
+                { fontSize: o?.size || '13px', fill: c || '#e8d5a3', fontFamily: 'serif',
+                  stroke: '#000', strokeThickness: 2 }).setOrigin(o?.ox ?? 0, o?.oy ?? 0.5).setDepth(53).setScrollFactor(SF)
+
+            // Títol + info
+            txt(px + 12, py + 14, `${this.nickname}  ·  Dia ${this.dia}  ·  ${this.monedes}$`, '#ffd700', { size: '14px' })
+
+            // Graella
+            const gx = px + 16
+            const gy = py + 44
+            const cellW = (panelW - 32) / cols
+            const cellH = (panelH - 80) / rows
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const idx = pagina * slots + r * cols + c
+                    const cellX = gx + c * cellW
+                    const cellY = gy + r * cellH
+                    const item = this.inventari[idx]
+
+                    // Fons de cel·la
+                    this.add.rectangle(cellX + cellW / 2, cellY + cellH / 2, cellW - 2, cellH - 2, 0x1a1208, 0.5)
+                        .setDepth(52).setScrollFactor(SF).setStrokeStyle(1, item ? 0xc9a227 : 0x333333)
+
+                    if (item) {
+                        const cor = item.raresa === 'llegendari' ? '#ff8800'
+                            : item.raresa === 'epic' ? '#cc44ff'
+                            : item.raresa === 'rara' ? '#44aaff'
+                            : item.raresa === 'poc-comuna' ? '#44ff44'
+                            : '#ffffff'
+                        txt(cellX + 4, cellY + 6, `${item.nomItem}`, cor, { size: '10px', oy: 0 })
+                        txt(cellX + 4, cellY + cellH - 8, `#${item.itemId}`, '#888', { size: '8px', oy: 1 })
+                    }
+                }
+            }
+
+            // Paginació
+            if (total > slots) {
+                const pagY = py + panelH - 22
+                const ant = txt(cx - 60, pagY, '<', '#ffd700', { size: '16px', ox: 0.5 })
+                ant.setInteractive({ useHandCursor: true }).on('pointerdown', () => { if (pagina > 0) { pagina--; render() } })
+                ant.setAlpha(pagina > 0 ? 1 : 0.3)
+
+                const seg = txt(cx + 60, pagY, '>', '#ffd700', { size: '16px', ox: 0.5 })
+                seg.setInteractive({ useHandCursor: true }).on('pointerdown', () => { if (pagina < maxPag) { pagina++; render() } })
+                seg.setAlpha(pagina < maxPag ? 1 : 0.3)
+
+                txt(cx, pagY, `${pagina + 1}/${maxPag + 1}`, '#888', { size: '11px', ox: 0.5 })
+            }
+
+            // Tancar
+            const cBtn = txt(cx + panelW / 2 - 14, py + 14, '✕', '#ff6666', { size: '16px', ox: 0.5 })
+            cBtn.setInteractive({ useHandCursor: true }).on('pointerdown', tancar)
+        }
+
+        render()
+        this._tancarMenu = tancar
     }
 
     obrirCheats() {
