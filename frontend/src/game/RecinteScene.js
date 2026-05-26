@@ -530,6 +530,27 @@ export default class RecinteScene extends Phaser.Scene {
         const total = this.inventari.length || 0
         const maxPag = Math.max(0, Math.ceil(total / slots) - 1)
 
+        const descripcioItem = (item) => {
+            if (!item || !item.efecte) return ''
+            const ef = item.efecte
+            switch (ef.tipus) {
+                case 'prob_jackpot_slots': return `+${Math.round(ef.valor * 100)}% prob. jackpot (Slots)`
+                case 'prob_guany_ruleta': return `+${Math.round(ef.valor * 100)}% prob. guanyar (Ruleta)`
+                case 'prob_guany_moneda': return `+${Math.round(ef.valor * 100)}% prob. guanyar (Cara/Creu)`
+                case 'reduccio_perdua': return `-${Math.round(ef.valor * 100)}% perdues`
+                case 'prob_joker': return `+${Math.round(ef.valor * 100)}% prob. Joker (Blackjack)`
+                case 'anular_perdua': return 'Anul·la 1 perdua'
+                case 'revelar_crupier': return 'Revela carta del crupier'
+                case 'ronda_extra': return 'Ronda extra'
+                case 'bonus_guany': return `+${Math.round(ef.valor * 100)}% bonus guanys`
+                case 'monedes_extra': return `+${ef.valor} monedes (consumible)`
+                case 'carta_extra': return 'Carta extra (Blackjack)'
+                case 'doble_aposta': return 'Doble aposta'
+                case 'as_seguro': return 'As com a segur (Blackjack)'
+                default: return ''
+            }
+        }
+
         const tancar = () => {
             overlay.destroy(); this.children.list.filter(c => c.depth >= 50).forEach(c => c.destroy())
             this.menuOpen = false; this._menuTipus = null
@@ -561,7 +582,7 @@ export default class RecinteScene extends Phaser.Scene {
             this.children.list.filter(c => c.depth >= 50 && c !== overlay).forEach(c => c.destroy())
 
             const panelW = Math.min(460, width * 0.85)
-            const panelH = Math.min(250, height * 0.55)
+            const panelH = Math.min(280, height * 0.60)
             const px = cx - panelW / 2
             const py = cy - panelH / 2
 
@@ -598,6 +619,19 @@ export default class RecinteScene extends Phaser.Scene {
                             : '#ffffff'
                         const tipusIcon = item.tipus === 'consumible' ? ' C' : ''
                         txt(cellX + 4, cellY + cellH / 2, `${item.nomItem}${tipusIcon}`, cor, { size: '10px' })
+
+                        const ttipX = cx
+                        const ttipY = Math.max(py + 12, cellY - 24)
+                        const raresaLabel = item.raresa.charAt(0).toUpperCase() + item.raresa.slice(1)
+                        const tipLines = [`${raresaLabel}  ·  ${item.nomItem}`, descripcioItem(item)]
+                        const tip = this.add.text(ttipX, ttipY, tipLines.join('\n'), {
+                            fontSize: '10px', fill: cor, fontFamily: 'serif',
+                            stroke: '#000', strokeThickness: 2,
+                            backgroundColor: '#0d0a06cc', padding: { x: 6, y: 4 },
+                            lineSpacing: 3, align: 'center'
+                        }).setOrigin(0.5, 1).setDepth(55).setScrollFactor(SF).setAlpha(0)
+                        cell.on('pointerover', () => tip.setAlpha(1))
+                        cell.on('pointerout', () => tip.setAlpha(0))
                     }
                 }
             }
@@ -615,6 +649,19 @@ export default class RecinteScene extends Phaser.Scene {
                     slotBg.on('pointerdown', () => desequipar(i))
                     const sc = sItem.raresa === 'legendari' ? '#ff8800' : sItem.raresa === 'epic' ? '#cc44ff' : sItem.raresa === 'raro' ? '#44aaff' : '#ffffff'
                     txt(sx, eqY + 20, `${sItem.nomItem}`, sc, { size: '8px', ox: 0.5 })
+
+                    const etipX = cx
+                    const etipY = eqY - 6
+                    const eraresaLabel = sItem.raresa.charAt(0).toUpperCase() + sItem.raresa.slice(1)
+                    const etipLines = [`${eraresaLabel}  ·  ${sItem.nomItem}`, descripcioItem(sItem), '[Clic per desequipar]']
+                    const etip = this.add.text(etipX, etipY, etipLines.join('\n'), {
+                        fontSize: '10px', fill: sc, fontFamily: 'serif',
+                        stroke: '#000', strokeThickness: 2,
+                        backgroundColor: '#0d0a06cc', padding: { x: 6, y: 4 },
+                        lineSpacing: 3, align: 'center'
+                    }).setOrigin(0.5, 1).setDepth(55).setScrollFactor(SF).setAlpha(0)
+                    slotBg.on('pointerover', () => etip.setAlpha(1))
+                    slotBg.on('pointerout', () => etip.setAlpha(0))
                 } else {
                     txt(sx, eqY + 20, `Slot ${i + 1}`, '#444', { size: '8px', ox: 0.5 })
                 }
