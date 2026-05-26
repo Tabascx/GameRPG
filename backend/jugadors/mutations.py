@@ -22,7 +22,7 @@ from backend.jugadors.types import (
 from strawberry.types import Info
 
 MILLORES_CONFIG = {
-    "seguro": {"max_nivell": 3, "cost_base": 50, "cost_inc": 100},
+    "seguro": {"max_nivell": 3, "costs": [100, 400, 1000]},
     "taberna": {"max_nivell": 10, "cost_base": 50, "cost_inc": 10},
 }
 
@@ -67,7 +67,8 @@ class JugadorsMutation:
 
         # Buscar si ja té aquesta millora
         inv_ref = db.collection("jugadors").document(input.jugador_id).collection("inventari")
-        existing = inv_ref.where("nom", "==", nom).stream()
+        from google.cloud.firestore_v1 import FieldFilter
+        existing = inv_ref.where(filter=FieldFilter("nom", "==", nom)).stream()
         existing_docs = list(existing)
 
         if existing_docs:
@@ -76,14 +77,20 @@ class JugadorsMutation:
             if nivell_actual >= config["max_nivell"]:
                 return ErrorSenseMonedes(missatge=f"Millora {nom} al màxim nivell ({config['max_nivell']})")
             nou_nivell = nivell_actual + 1
-            cost = aplicar_multiplicador_millora(config["cost_base"] + nivell_actual * config["cost_inc"])
+            if "costs" in config:
+                cost = aplicar_multiplicador_millora(config["costs"][nivell_actual])
+            else:
+                cost = aplicar_multiplicador_millora(config["cost_base"] + nivell_actual * config["cost_inc"])
             if data["monedes"] < cost:
                 return ErrorSenseMonedes(missatge=f"No tens prou monedes. Necessites {cost}$")
             ref.update({"monedes": data["monedes"] - cost})
             inv_ref.document(doc_existing.id).update({"nivell": nou_nivell, "descripcio": input.descripcio})
             return Millora(id=doc_existing.id, nom=nom, descripcio=input.descripcio, nivell=nou_nivell)
         else:
-            cost = aplicar_multiplicador_millora(config["cost_base"])
+            if "costs" in config:
+                cost = aplicar_multiplicador_millora(config["costs"][0])
+            else:
+                cost = aplicar_multiplicador_millora(config["cost_base"])
             if data["monedes"] < cost:
                 return ErrorSenseMonedes(missatge=f"No tens prou monedes. Necessites {cost}$")
             ref.update({"monedes": data["monedes"] - cost})

@@ -16,4 +16,4 @@ def get_current_user(info: Info) -> dict:
 def is_admin(info: Info) -> bool:
     user = get_current_user(info)
     email = user.get("email", "")
-    return email.endswith("@astrohunters.com")
+    return email.endswith("@irongate.es")

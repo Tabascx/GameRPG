@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import client from '../graphql/client'
-import { COMPRAR_MILLORA, GET_PERFIL } from '../graphql/queries'
+import { COMPRAR_MILLORA, GET_PERFIL, NETEGAR_BASE_DADES } from '../graphql/queries'
 import BootScene from '../game/BootScene'
 import RecinteScene from '../game/RecinteScene'
 import CasinoScene from '../game/CasinoScene'
@@ -9,6 +9,7 @@ import BlackjackScene from '../game/BlackjackScene'
 import RuletaScene from '../game/RuletaScene'
 import SlotsScene from '../game/SlotsScene'
 import MonedaScene from '../game/MonedaScene'
+import DausScene from '../game/DausScene'
 
 export default function Battle({ jugador }) {
     const gameRef = useRef(null)
@@ -55,6 +56,7 @@ export default function Battle({ jugador }) {
         game.scene.add('RuletaScene', RuletaScene, false)
         game.scene.add('SlotsScene', SlotsScene, false)
         game.scene.add('MonedaScene', MonedaScene, false)
+        game.scene.add('DausScene', DausScene, false)
 
         gameRef.current = game
 
@@ -91,8 +93,27 @@ export default function Battle({ jugador }) {
         }
         window.addEventListener('comprar-millora', compraHandler)
 
+        // Bridge: netejar base de dades des de Phaser → GraphQL
+        const wipeHandler = async (e) => {
+            try {
+                const { data } = await client.mutate({
+                    mutation: NETEGAR_BASE_DADES,
+                    variables: { password: e.detail.password }
+                })
+                window.dispatchEvent(new CustomEvent('neteja-resultat', {
+                    detail: data?.netejarBaseDades || { missatge: 'Error de connexió' }
+                }))
+            } catch (err) {
+                window.dispatchEvent(new CustomEvent('neteja-resultat', {
+                    detail: { missatge: 'Error: ' + err.message }
+                }))
+            }
+        }
+        window.addEventListener('netejar-base-dades', wipeHandler)
+
         return () => {
             window.removeEventListener('comprar-millora', compraHandler)
+            window.removeEventListener('netejar-base-dades', wipeHandler)
             game.destroy(true)
             gameRef.current = null
         }

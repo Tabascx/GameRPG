@@ -5,6 +5,7 @@ const JOCS = [
     { nom: 'Ruleta', escena: 'RuletaScene', color: 0x3d1a00 },
     { nom: 'Slots', escena: 'SlotsScene', color: 0x1a0d3d },
     { nom: 'Cara o Creu', escena: 'MonedaScene', color: 0x3d3d06 },
+    { nom: 'Daus (Boss)', escena: 'DausScene', color: 0x3d0606 },
 ]
 
 export default class CasinoScene extends Phaser.Scene {
@@ -17,12 +18,16 @@ export default class CasinoScene extends Phaser.Scene {
         this.monedes = data.monedes
         this.dia = data.dia
         this.millores = data.millores
+        this.equipats = data.equipats || []
+        this.inventari = data.inventari || []
+        this.capsulaPreu = data.capsulaPreu ?? 50
     }
 
     create() {
         const { width, height } = this.scale
 
-        this.add.rectangle(width / 2, height / 2, width, height, 0x0d0a06)
+        this.add.image(width / 2, height / 2, 'casinoBg').setDisplaySize(width, height)
+        this.afegirVinyeta(width, height)
 
         this.add.text(width / 2, height / 3, '🎲 CASINO 🎲', {
             fontSize: '36px', fill: '#c9a227', fontFamily: 'serif',
@@ -38,8 +43,27 @@ export default class CasinoScene extends Phaser.Scene {
             fontSize: '16px', fill: '#ffd700', fontFamily: 'serif'
         }).setOrigin(1, 0)
 
-        // Triar joc aleatori
-        const joc = Phaser.Utils.Array.GetRandom(JOCS)
+        // Triar joc (forçat per cheat, dia 5=boss, o aleatori)
+        let joc
+        if (this.dia === 5) {
+            this.scene.start('DausScene', {
+                nickname: this.nickname,
+                monedes: this.monedes,
+                dia: this.dia,
+                millores: this.millores,
+                equipats: this.equipats,
+                inventari: this.inventari,
+                capsulaPreu: this.capsulaPreu
+            })
+            return
+        }
+        const forcjat = localStorage.getItem('cheat_joc')
+        if (forcjat) {
+            joc = JOCS.find(j => j.escena === forcjat)
+        }
+        if (!joc) {
+            joc = Phaser.Utils.Array.GetRandom(JOCS.filter(j => j.escena !== 'DausScene'))
+        }
 
         this.time.delayedCall(600, () => {
             info.setText(`Avui toca... ${joc.nom}!`)
@@ -53,9 +77,25 @@ export default class CasinoScene extends Phaser.Scene {
                     nickname: this.nickname,
                     monedes: this.monedes,
                     dia: this.dia,
-                    millores: this.millores
+                    millores: this.millores,
+                    equipats: this.equipats,
+                    inventari: this.inventari,
+                    capsulaPreu: this.capsulaPreu
                 })
             })
         })
+    }
+
+    afegirVinyeta(w, h) {
+        const rt = this.add.renderTexture(0, 0, w, h).setDepth(1)
+        rt.fill(0x000000, 0.55)
+        const circ = this.make.graphics({ add: false })
+        circ.fillStyle(0xffffff)
+        circ.fillCircle(0, 0, 260)
+        circ.generateTexture('spot_cas', 520, 520)
+        circ.destroy()
+        const eraser = this.add.image(w / 2, h / 2 - 40, 'spot_cas').setVisible(false)
+        rt.erase(eraser, w / 2, h / 2 - 40)
+        eraser.destroy()
     }
 }

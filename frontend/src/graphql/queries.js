@@ -97,3 +97,18 @@ export const CREAR_PARTIDA = gql`
     }
   }
 `;
+
+export const NETEGAR_BASE_DADES = gql`
+  mutation NetejarBaseDades($password: String!) {
+    netejarBaseDades(password: $password) {
+      __typename
+      ... on ResultatNeteja {
+        missatge
+        documentsEliminats
+      }
+      ... on ErrorPasswordIncorrecte {
+        missatge
+      }
+    }
+  }
+`;

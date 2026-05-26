@@ -27,6 +27,20 @@ export default class BootScene extends Phaser.Scene {
 
     preload() {
         this.load.image('sprites', 'assets/sprites.png')
+        const SUITS = ['Clubs', 'Diamonds', 'Hearts', 'Spades']
+        const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+        for (const suit of SUITS) {
+            for (const rank of RANKS) {
+                this.load.image(`card_${suit}_${rank}`, `assets/cards/card${suit}${rank}.png`)
+            }
+        }
+        this.load.image('cardBack', 'assets/cards/cardBack_green4.png')
+        this.load.image('cardJoker', 'assets/cards/cardJoker.png')
+        this.load.image('casinoBg', 'assets/casino_matt.png')
+        this.load.image('recinteBg', 'assets/background.png')
+        for (let n = 1; n <= 6; n++) {
+            this.load.image(`dau_${n}`, `assets/dice/dieWhite${n}.png`)
+        }
     }
 
     create() {
@@ -68,8 +82,8 @@ export default class BootScene extends Phaser.Scene {
             for (const [x, y, w, h] of [[2,2,12,10],[18,4,10,8],[6,16,14,10],[24,18,6,8],[0,24,8,6],[14,26,10,4]]) g.fillRect(x,y,w,h)
             g.generateTexture(n, S, S); g.destroy()
         }
-        mt('ground', 0x2a4a1a, 0x3a5a2a)
-        mt('wall', 0x3a3030, 0x4a4040)
+        mt('ground', 0x1a3a0a, 0x224f10)
+        mt('wall', 0x555555, 0x666666)
         mt('path', 0x6b5a3a, 0x7a694a)
 
         // Jugador
@@ -116,12 +130,16 @@ export default class BootScene extends Phaser.Scene {
         t.fillStyle(0x2a7a1a); t.fillCircle(12,10,8); t.fillCircle(20,10,8); t.fillCircle(16,6,6)
         t.generateTexture('tree',32,40); t.destroy()
 
-        // Portó
+        // Portó (reixes)
         const p = this.make.graphics()
-        p.fillStyle(0x8b6914); p.fillRect(4,2,24,28)
-        p.fillStyle(0xa07b1a); p.fillRect(8,6,16,20)
-        p.fillStyle(0xc9a227); p.fillCircle(10,8,2).fillCircle(22,8,2).fillCircle(10,22,2).fillCircle(22,22,2)
-        p.generateTexture('gate',S,S); p.destroy()
+        p.fillStyle(0x1a1208); p.fillRect(4, 2, 24, 28)
+        p.fillStyle(0x666666)
+        for (let bx = 6; bx < 28; bx += 6) {
+            p.fillRect(bx, 4, 3, 24)
+        }
+        p.fillStyle(0x888888); p.fillRect(4, 6, 24, 3)
+        p.fillStyle(0x888888); p.fillRect(4, 24, 24, 3)
+        p.generateTexture('gate', S, S); p.destroy()
 
         // HUD
         const h = this.make.graphics()
