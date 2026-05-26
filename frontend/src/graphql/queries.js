@@ -98,6 +98,36 @@ export const CREAR_PARTIDA = gql`
   }
 `;
 
+export const LOGIN = gql`
+  mutation Login($email: String!, $password: String!) {
+    login(input: { email: $email, password: $password }) {
+      __typename
+      ... on Token {
+        token
+        uid
+      }
+      ... on ErrorLogin {
+        missatge
+      }
+    }
+  }
+`;
+
+export const REGISTRE = gql`
+  mutation Registre($nickname: String!, $email: String!, $password: String!) {
+    registre(input: { nickname: $nickname, email: $email, password: $password }) {
+      __typename
+      ... on Token {
+        token
+        uid
+      }
+      ... on ErrorRegistre {
+        missatge
+      }
+    }
+  }
+`;
+
 export const NETEGAR_BASE_DADES = gql`
   mutation NetejarBaseDades($password: String!) {
     netejarBaseDades(password: $password) {
@@ -107,6 +137,22 @@ export const NETEGAR_BASE_DADES = gql`
         documentsEliminats
       }
       ... on ErrorPasswordIncorrecte {
+        missatge
+      }
+    }
+  }
+`;
+
+export const SINCRONITZAR_JUGADOR = gql`
+  mutation SincronitzarJugador($jugadorId: String!, $monedes: Float!, $diaActual: Int!, $millores: [MilloraSyncInput!]!) {
+    sincronitzarJugador(input: { jugadorId: $jugadorId, monedes: $monedes, diaActual: $diaActual, millores: $millores }) {
+      __typename
+      ... on ResultatSincronitzar {
+        missatge
+        monedes
+        diaActual
+      }
+      ... on ErrorJugadorNoTrobat {
         missatge
       }
     }

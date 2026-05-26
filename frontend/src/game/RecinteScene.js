@@ -9,9 +9,9 @@ export default class RecinteScene extends Phaser.Scene {
         this.nickname = data.nickname || 'Presoner'
         this.monedes = data.monedes ?? 400
         this.dia = data.dia ?? 1
-        this.millores = data.millores || []
-        this.inventari = data.inventari || []
-        this.equipats = data.equipats || Array.from({ length: 4 }, () => null)
+        this.millores = [...(data.millores || [])]
+        this.inventari = [...(data.inventari || [])]
+        this.equipats = [...(data.equipats || Array.from({ length: 4 }, () => null))]
         this.capsulaPreu = data.capsulaPreu ?? 50
     }
 
@@ -95,6 +95,22 @@ export default class RecinteScene extends Phaser.Scene {
         this.menuOpen = false
         this._menuTipus = null
 
+        // Auto-carregar partida guardada si existeix
+        const uid = localStorage.getItem('uid') || 'anonim'
+        const save = localStorage.getItem(`irongate_save_${uid}`)
+        if (save) {
+            try {
+                const d = JSON.parse(save)
+                this.nickname = d.nickname || this.nickname
+                this.monedes = d.monedes ?? this.monedes
+                this.dia = d.dia ?? this.dia
+                this.millores = d.millores || this.millores
+                this.inventari = d.inventari || this.inventari
+                this.equipats = d.equipats || this.equipats
+                this.capsulaPreu = d.capsulaPreu ?? this.capsulaPreu
+            } catch (e) { /* ignora */ }
+        }
+
         // ── PROMPT ──
         this.promptBg = this.add.rectangle(0, 0, 100, 20, 0x000000, 0.6).setDepth(15).setVisible(false).setScrollFactor(0)
         this.promptText = this.add.text(0, 0, '', {
@@ -112,19 +128,6 @@ export default class RecinteScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-ESC', () => {
             if (this.menuOpen) { this._tancarMenu(); return }
             this.obrirMenuPausa()
-        })
-
-        // Escoltar actualitzacions de perfil (compres des de la botiga)
-        this._perfilHandler = (e) => {
-            const p = e.detail
-            this.monedes = p.monedes
-            this.millores = p.millores || []
-        }
-        window.addEventListener('perfil-updated', this._perfilHandler)
-
-        this.events.on('shutdown', () => {
-            window.removeEventListener('perfil-updated', this._perfilHandler)
-            window.removeEventListener('perfil-updated', this._shopUpdateHandler)
         })
     }
 
@@ -233,24 +236,32 @@ export default class RecinteScene extends Phaser.Scene {
 
         const destroyMenu = () => {
             menuItems.forEach(c => c.destroy())
-            window.removeEventListener('perfil-updated', this._shopUpdateHandler)
             this.menuOpen = false; this._menuTipus = null
             this._menuClosedAt = Date.now()
         }
         this._tancarMenu = destroyMenu
 
         // Creu tancar
+        const closeBtn = addItem(this.add.text(cx + halfW - 14, cy - halfH + 14, 'X', {
+            fontSize: '16px', fill: '#d4c5a0', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(51).setScrollFactor(0).setInteractive({ useHandCursor: true }))
+        closeBtn.on('pointerover', () => { closeBtn.setFill('#ff4444'); closeBtn.setScale(1.15) })
+        closeBtn.on('pointerout', () => { closeBtn.setFill('#d4c5a0'); closeBtn.setScale(1) })
+        closeBtn.on('pointerdown', destroyMenu)
+
         if (isShop) {
             const renderShop = () => {
-                // Eliminar elements de botiga vells (depth 52-99, excloent overlay/bg/tancar que son depth 50-51 i 53)
-                menuItems.filter(c => c.depth >= 52 && c.depth < 60 && c !== closeBtn && c !== tipClose).forEach(c => {
-                    const idx = menuItems.indexOf(c)
-                    if (idx >= 0) menuItems.splice(idx, 1)
-                    c.destroy()
-                })
+                for (let i = menuItems.length - 1; i >= 0; i--) {
+                    const c = menuItems[i]
+                    if (c !== overlay && c !== bg && c !== closeBtn) {
+                        menuItems.splice(i, 1)
+                        c.destroy()
+                    }
+                }
 
-                addItem(this.add.text(cx - halfW + 16, cy - halfH + 14, zone.label, {
-                    fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
+                addItem(this.add.text(cx - halfW + 16, cy - halfH + 14, `${zone.label}  ·  ${this.monedes}$`, {
+                    fontSize: '15px', fill: '#ffd700', fontFamily: 'serif',
                     stroke: '#000', strokeThickness: 2
                 }).setOrigin(0, 0).setDepth(52))
 
@@ -368,18 +379,20 @@ export default class RecinteScene extends Phaser.Scene {
                             }
                             this.monedes -= cost
                             const existing = this.millores.find(m => m.nom === upg.nom)
-                            if (existing) existing.nivell++
-                            else this.millores.push({ nom: upg.nom, nivell: 1 })
+                            if (existing) {
+                                existing.nivell++
+                            } else {
+                                this.millores.push({ nom: upg.nom, nivell: 1, descripcio: `${upg.label} nivell 1` })
+                            }
+                            // Forcar re-render immediat
                             renderShop()
+                            // Animacio -cost$
                             const ef = this.add.text(cx + rowW / 2, rowY + 10, `-${cost}$`, {
                                 fontSize: '16px', fill: '#ff4444', fontFamily: 'serif',
                                 stroke: '#000', strokeThickness: 3
                             }).setOrigin(0.5).setDepth(59).setScrollFactor(0)
                             this.tweens.add({ targets: ef, y: ef.y + 30, alpha: 0, duration: 800, ease: 'Power2',
                                 onComplete: () => ef.destroy() })
-                            window.dispatchEvent(new CustomEvent('comprar-millora', {
-                                detail: { nom: upg.nom, descripcio: `${upg.label} nivell ${lvl + 1}` }
-                            }))
                         })
                     } else {
                         addItem(this.add.text(cx + rowW / 2, rowY + 10, 'MAX', {
@@ -392,17 +405,15 @@ export default class RecinteScene extends Phaser.Scene {
 
             renderShop()
 
-            this._shopUpdateHandler = () => {
-                if (this.menuOpen) renderShop()
-            }
-            window.addEventListener('perfil-updated', this._shopUpdateHandler)
         } else {
             const renderOnce = () => {
-                menuItems.filter(c => c.depth >= 52 && c.depth < 60 && c !== closeBtn && c !== tipClose).forEach(c => {
-                    const idx = menuItems.indexOf(c)
-                    if (idx >= 0) menuItems.splice(idx, 1)
-                    c.destroy()
-                })
+                for (let i = menuItems.length - 1; i >= 0; i--) {
+                    const c = menuItems[i]
+                    if (c !== overlay && c !== bg && c !== closeBtn) {
+                        menuItems.splice(i, 1)
+                        c.destroy()
+                    }
+                }
 
                 const preu = Math.min(this.capsulaPreu, 300)
                 const txt = (x, y, s, c, o) => addItem(this.add.text(x, y, s,
@@ -622,8 +633,13 @@ export default class RecinteScene extends Phaser.Scene {
                 txt(cx, pagY, `${pagina + 1}/${maxPag + 1}`, '#888', { size: '10px', ox: 0.5 })
             }
 
-            const cBtn = txt(cx + panelW / 2 - 14, py + 14, 'X', '#ff6666', { size: '16px', ox: 0.5 })
-            cBtn.setInteractive({ useHandCursor: true }).on('pointerdown', tancar)
+            const cBtn = this.add.text(cx + panelW / 2 - 14, py + 14, 'X', {
+                fontSize: '16px', fill: '#d4c5a0', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 3
+            }).setOrigin(0.5).setDepth(53).setScrollFactor(SF).setInteractive({ useHandCursor: true })
+            cBtn.on('pointerover', () => { cBtn.setFill('#ff4444'); cBtn.setScale(1.15) })
+            cBtn.on('pointerout', () => { cBtn.setFill('#d4c5a0'); cBtn.setScale(1) })
+            cBtn.on('pointerdown', tancar)
         }
 
         render()
@@ -648,12 +664,12 @@ export default class RecinteScene extends Phaser.Scene {
         const cx = width / 2
         const cy = height / 2
         const SF = 0
-        const W = 300
-        const H = 320
+        const W = 340
+        const H = 390
 
         const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7).setDepth(50).setScrollFactor(SF)
         const bg = this.add.rectangle(cx, cy, W, H, 0x0d0a06, 0.95).setDepth(51)
-            .setStrokeStyle(2, 0x88ff88).setScrollFactor(SF)
+            .setStrokeStyle(2, 0xc9a227).setScrollFactor(SF)
 
         const tancar = () => {
             overlay.destroy(); bg.destroy()
@@ -684,12 +700,12 @@ export default class RecinteScene extends Phaser.Scene {
                 onComplete: () => t.destroy() })
         }
 
-        addBtn(cx, cy - 40, '+1000$', () => {
+        addBtn(cx, cy - 38, '+1000$', () => {
             this.monedes += 1000
-            ferEfecteMonedes(cx, cy - 40)
+            ferEfecteMonedes(cx, cy - 38)
         })
 
-        addBtn(cx, cy + 0, 'AFEGIR OBJECTE', () => {
+        addBtn(cx, cy - 8, 'AFEGIR OBJECTE', () => {
             const id = window.prompt('ID de l\'objecte (1-3 digits):')
             if (!id) return
             if (!/^\d{1,3}$/.test(id.trim())) {
@@ -709,65 +725,76 @@ export default class RecinteScene extends Phaser.Scene {
             { label: 'Joc: Daus (Boss)', value: 'DausScene' },
         ]
         let idxJoc = Math.max(0, jocsOpcs.findIndex(j => j.value === localStorage.getItem('cheat_joc')))
-        const jocTxt = addBtn(cx, cy + 25, jocsOpcs[idxJoc].label, () => {
+        const jocTxt = addBtn(cx, cy + 22, jocsOpcs[idxJoc].label, () => {
             idxJoc = (idxJoc + 1) % jocsOpcs.length
             localStorage.setItem('cheat_joc', jocsOpcs[idxJoc].value)
             jocTxt.setText(jocsOpcs[idxJoc].label)
         })
 
-        // Borrar perfil (sempre visible) — tremola al passar el ratoli
-        const btnBorrar = this.add.text(cx, cy + 80, 'BORRAR PERFIL', {
-            fontSize: '13px', fill: '#ff6666', fontFamily: 'serif',
-            stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1a0a88', padding: { x: 10, y: 5 }
-        }).setOrigin(0.5).setDepth(53).setScrollFactor(0).setInteractive({ useHandCursor: true })
-        let shaking = false
-        btnBorrar.on('pointerover', () => {
-            if (shaking) return
-            shaking = true
-            this.tweens.add({
-                targets: btnBorrar, x: btnBorrar.x + 3, duration: 40, yoyo: true, repeat: 5,
-                onComplete: () => { shaking = false; btnBorrar.x = cx }
+        // Botons perillosos (vermells, vibren, contrasenya admin)
+        const btnPerillos = (y, label, cb) => {
+            const t = this.add.text(cx, y, label, {
+                fontSize: '13px', fill: '#ff4444', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 2, backgroundColor: '#1a1a0a88', padding: { x: 10, y: 5 }
+            }).setOrigin(0.5).setDepth(53).setScrollFactor(0).setInteractive({ useHandCursor: true })
+            let shaking = false
+            t.on('pointerover', () => {
+                if (shaking) return
+                shaking = true
+                this.tweens.add({
+                    targets: t, x: t.x + 4, duration: 35, yoyo: true, repeat: 6,
+                    onComplete: () => { shaking = false; t.x = cx }
+                })
             })
-        })
-        btnBorrar.on('pointerout', () => { btnBorrar.x = cx; shaking = false })
-        btnBorrar.on('pointerdown', () => {
-            btnBorrar.x = cx; shaking = false
-            if (!window.confirm('SEGUR QUE VOLS BORRAR EL PERFIL?\nTornaras al menu principal.')) return
-            if (!window.confirm('Aixo eliminara les dades locals.\nLes dades al servidor es mantindran.')) return
+            t.on('pointerout', () => { t.x = cx; shaking = false })
+            t.on('pointerdown', () => {
+                t.x = cx; shaking = false
+                const pwd = window.prompt('Contrasenya admin:')
+                if (pwd !== 'admin123') { window.alert('Contrasenya incorrecta'); return }
+                cb()
+            })
+            return t
+        }
+
+        btnPerillos(cy + 52, 'BORRAR PERFIL', () => {
+            if (!window.confirm('SEGUR? Tornaras al menu principal.')) return
+            const uid = localStorage.getItem('uid') || 'anonim'
+            localStorage.removeItem('token')
+            localStorage.removeItem('uid')
             localStorage.removeItem('jugadorId')
             localStorage.removeItem('nickname')
-            localStorage.removeItem('irongate_save')
+            localStorage.removeItem(`irongate_save_${uid}`)
             window.location.reload()
         })
 
-        // WIPE (només si JWT admin)
-        const token = localStorage.getItem('token')
-        let esAdmin = false
-        if (token) {
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]))
-                esAdmin = payload.email && payload.email.endsWith('@irongate.es')
-            } catch (e) { /* ignora */ }
-        }
-        if (esAdmin) {
-            addBtn(cx, cy + 130, 'WIPE (netejar tot)', () => {
-                if (!window.confirm('SEGUR QUE VOLS NETEGAR TOTA LA BASE DE DADES?\nAquesta accio es irreversible.')) return
-                const pwd = window.prompt('Contrasenya admin:')
-                if (!pwd) return
-                window.dispatchEvent(new CustomEvent('netejar-base-dades', { detail: { password: pwd } }))
-            })
-        }
+        btnPerillos(cy + 82, 'WIPE GLOBAL', () => {
+            if (!window.confirm('SEGUR QUE VOLS NETEGAR TOTA LA BASE DE DADES?\nAquesta accio es irreversible.')) return
+            window.dispatchEvent(new CustomEvent('netejar-base-dades', { detail: { password: 'admin123' } }))
+        })
 
         const wipeResultHandler = (e) => {
             const r = e.detail
             window.alert(r.missatge || 'Error desconegut')
+            if (r.documentsEliminats >= 0) {
+                const uid = localStorage.getItem('uid') || 'anonim'
+                localStorage.removeItem('token')
+                localStorage.removeItem('uid')
+                localStorage.removeItem('jugadorId')
+                localStorage.removeItem('nickname')
+                localStorage.removeItem(`irongate_save_${uid}`)
+                window.location.reload()
+            }
         }
         window.addEventListener('neteja-resultat', wipeResultHandler)
         this.events.on('shutdown', () => window.removeEventListener('neteja-resultat', wipeResultHandler))
 
-        const closeBtn = addTxt(cx + W / 2 - 14, cy - H / 2 + 14, '✕', '16px', '#ff6666')
-        closeBtn.setInteractive({ useHandCursor: true })
-        closeBtn.on('pointerdown', tancar)
+        const cBtn = this.add.text(cx + W / 2 - 14, cy - H / 2 + 14, 'X', {
+            fontSize: '16px', fill: '#d4c5a0', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(53).setScrollFactor(SF).setInteractive({ useHandCursor: true })
+        cBtn.on('pointerover', () => { cBtn.setFill('#ff4444'); cBtn.setScale(1.15) })
+        cBtn.on('pointerout', () => { cBtn.setFill('#d4c5a0'); cBtn.setScale(1) })
+        cBtn.on('pointerdown', tancar)
 
         this._tancarMenu = tancar
     }
@@ -782,7 +809,7 @@ export default class RecinteScene extends Phaser.Scene {
 
         const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7)
             .setDepth(100).setScrollFactor(0)
-        const bg = this.add.rectangle(cx, cy, 280, 240, 0x0d0a06, 0.95).setDepth(101)
+        const bg = this.add.rectangle(cx, cy, 340, 310, 0x0d0a06, 0.95).setDepth(101)
             .setStrokeStyle(2, 0xc9a227).setScrollFactor(0)
 
         const tancar = () => {
@@ -812,7 +839,19 @@ export default class RecinteScene extends Phaser.Scene {
             this.tweens.add({ targets: f, alpha: 0, delay: 1200, duration: 600, onComplete: () => f.destroy() })
         }
 
-        txt(cx, cy - 80, 'MENU', '#c9a227', { size: '22px', ox: 0.5 })
+        txt(cx, cy - 85, 'MENU', '#c9a227', { size: '22px', ox: 0.5 })
+
+        const mkCloseBtn = (x, y, cb) => {
+            const c = this.add.text(x, y, 'X', {
+                fontSize: '16px', fill: '#d4c5a0', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 3
+            }).setOrigin(0.5).setDepth(103).setScrollFactor(0).setInteractive({ useHandCursor: true })
+            c.on('pointerover', () => { c.setFill('#ff4444'); c.setScale(1.15) })
+            c.on('pointerout', () => { c.setFill('#d4c5a0'); c.setScale(1) })
+            c.on('pointerdown', cb)
+            return c
+        }
+        mkCloseBtn(cx + 155, cy - 140, tancar)
 
         btn(cy - 35, 'Guardar partida', () => {
             const save = {
@@ -825,24 +864,37 @@ export default class RecinteScene extends Phaser.Scene {
                 capsulaPreu: this.capsulaPreu
             }
             try {
-                localStorage.setItem('irongate_save', JSON.stringify(save))
+                const uid = localStorage.getItem('uid') || 'anonim'
+                localStorage.setItem(`irongate_save_${uid}`, JSON.stringify(save))
+                window.dispatchEvent(new CustomEvent('sincronitzar-jugador', {
+                    detail: {
+                        monedes: this.monedes,
+                        diaActual: this.dia,
+                        millores: this.millores.map(m => ({
+                            nom: m.nom,
+                            descripcio: m.descripcio || '',
+                            nivell: m.nivell
+                        }))
+                    }
+                }))
                 feedback('Partida guardada!', '#00ff88')
             } catch (e) {
                 feedback('Error en guardar!', '#ff4444')
             }
         })
 
-        const teCarga = localStorage.getItem('irongate_save')
+        const uid = localStorage.getItem('uid') || 'anonim'
+        const teCarga = localStorage.getItem(`irongate_save_${uid}`)
         if (teCarga) {
-            btn(cy + 10, 'Carregar partida', () => {
+            btn(cy + 0, 'Carregar partida', () => {
                 try {
                     const d = JSON.parse(teCarga)
                     this.nickname = d.nickname
                     this.monedes = d.monedes
                     this.dia = d.dia
-                    this.millores = d.millores || []
-                    this.inventari = d.inventari || []
-                    this.equipats = d.equipats || Array.from({ length: 4 }, () => null)
+                    this.millores = [...(d.millores || [])]
+                    this.inventari = [...(d.inventari || [])]
+                    this.equipats = [...(d.equipats || Array.from({ length: 4 }, () => null))]
                     this.capsulaPreu = d.capsulaPreu ?? 50
                     feedback('Partida carregada!', '#ffd700')
                 } catch (e) {
@@ -850,10 +902,71 @@ export default class RecinteScene extends Phaser.Scene {
                 }
             })
         } else {
-            txt(cx, cy + 10, 'Carregar partida', '#555', { size: '14px', ox: 0.5 })
+            txt(cx, cy + 0, 'Carregar partida', '#555', { size: '14px', ox: 0.5 })
         }
 
-        btn(cy + 55, 'Continuar', tancar)
+        btn(cy + 35, 'Continuar', tancar)
+
+        // RESET RUN (vermell, vibra, doble click)
+        let resetClicks = 0
+        let resetExecutat = false
+        const btnReset = txt(cx, cy + 70, 'RESET RUN', '#ff4444', { size: '13px', ox: 0.5 })
+        btnReset.setBackgroundColor('#1a120888').setPadding(14, 7)
+            .setInteractive({ useHandCursor: true })
+        let rshaking = false
+        btnReset.on('pointerover', () => {
+            if (rshaking) return
+            rshaking = true
+            this.tweens.add({
+                targets: btnReset, x: btnReset.x + 4, duration: 35, yoyo: true, repeat: 6,
+                onComplete: () => { rshaking = false; btnReset.x = cx }
+            })
+        })
+        btnReset.on('pointerout', () => { btnReset.x = cx; rshaking = false })
+        btnReset.on('pointerdown', () => {
+            if (resetExecutat) return
+            resetClicks++
+            if (resetClicks === 1) {
+                btnReset.setText('CONFIRMAR RESET')
+                btnReset.setFill('#ff0000')
+                this.time.delayedCall(2000, () => {
+                    if (resetClicks === 1) { resetClicks = 0; btnReset.setText('RESET RUN'); btnReset.setFill('#ff4444') }
+                })
+            } else {
+                resetExecutat = true
+                btnReset.setText('Reiniciant...')
+                btnReset.setFill('#888888')
+                const uid = localStorage.getItem('uid') || 'anonim'
+                localStorage.setItem('irongate_reset', '1')
+                localStorage.removeItem(`irongate_save_${uid}`)
+                const onCompletat = (ev) => {
+                    if (ev.detail && ev.detail.ok) localStorage.removeItem('irongate_reset')
+                    window.removeEventListener('sincronitzacio-completada', onCompletat)
+                    window.location.reload()
+                }
+                window.addEventListener('sincronitzacio-completada', onCompletat)
+                this.events.once('shutdown', () => window.removeEventListener('sincronitzacio-completada', onCompletat))
+                window.dispatchEvent(new CustomEvent('sincronitzar-jugador', {
+                    detail: { monedes: 400, diaActual: 1, millores: [] }
+                }))
+                this.time.delayedCall(4000, () => {
+                    window.removeEventListener('sincronitzacio-completada', onCompletat)
+                    window.location.reload()
+                })
+            }
+        })
+
+        const btnSortir = txt(cx, cy + 105, 'Tancar sessio', '#ff6666', { size: '16px', ox: 0.5 })
+        btnSortir.setBackgroundColor('#1a120888').setPadding(14, 7)
+            .setInteractive({ useHandCursor: true })
+        btnSortir.on('pointerover', () => btnSortir.setFill('#ff0000'))
+        btnSortir.on('pointerout', () => btnSortir.setFill('#ff6666'))
+        btnSortir.on('pointerdown', () => {
+            localStorage.removeItem('token')
+            localStorage.removeItem('uid')
+            localStorage.removeItem('jugadorId')
+            window.location.reload()
+        })
 
         this._tancarMenu = tancar
     }

@@ -10,8 +10,8 @@ export default class DausScene extends Phaser.Scene {
         this.monedes = data.monedes
         this.dia = data.dia
         this.millores = data.millores
-        this.equipats = data.equipats || []
-        this.inventari = data.inventari || []
+        this.equipats = [...(data.equipats || [])]
+        this.inventari = [...(data.inventari || [])]
         this.capsulaPreu = data.capsulaPreu ?? 50
         this.guanyBrut = 0
         this.perduaBruta = 0

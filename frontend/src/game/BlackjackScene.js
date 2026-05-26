@@ -14,8 +14,8 @@ export default class BlackjackScene extends Phaser.Scene {
         this.monedes = data.monedes
         this.dia = data.dia
         this.millores = data.millores
-        this.equipats = data.equipats || []
-        this.inventari = data.inventari || []
+        this.equipats = [...(data.equipats || [])]
+        this.inventari = [...(data.inventari || [])]
         this.capsulaPreu = data.capsulaPreu ?? 50
         this.mans = 0
         this.maxMans = 5
@@ -323,9 +323,15 @@ export default class BlackjackScene extends Phaser.Scene {
                                 this.btnPedirCarta.setInteractive({ useHandCursor: true })
                                 this.btnPlantar.setInteractive({ useHandCursor: true })
                             }
-                        })
-                    }
                 })
+            }
+        })
+
+        this.time.delayedCall(1000, () => {
+            if (this.valorJugador === 21) {
+                this.acabarMa('blackjack')
+            }
+        })
             }
         })
     }
@@ -434,6 +440,8 @@ export default class BlackjackScene extends Phaser.Scene {
 
         if (this.valorJugador > 21) {
             this.time.delayedCall(400, () => this.acabarMa('lose'))
+        } else if (this.valorJugador === 21) {
+            this.time.delayedCall(400, () => this.acabarMa('blackjack'))
         }
     }
 
@@ -513,6 +521,11 @@ export default class BlackjackScene extends Phaser.Scene {
         if (result === 'push') {
             this.monedes += this.aposta
             this.resultText.setText('EMPAT!').setFill('#c9a227')
+        } else if (result === 'blackjack') {
+            this.monedes += this.aposta * 3
+            this.guanyBrut += this.aposta * 2
+            this.guanyades++
+            this.resultText.setText('BLACKJACK! x3').setFill('#ffd700')
         } else if (result === 'win') {
             this.monedes += this.aposta * 2
             this.guanyBrut += this.aposta

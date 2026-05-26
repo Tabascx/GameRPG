@@ -10,8 +10,8 @@ export default class MonedaScene extends Phaser.Scene {
         this.monedes = data.monedes
         this.dia = data.dia
         this.millores = data.millores
-        this.equipats = data.equipats || []
-        this.inventari = data.inventari || []
+        this.equipats = [...(data.equipats || [])]
+        this.inventari = [...(data.inventari || [])]
         this.capsulaPreu = data.capsulaPreu ?? 50
         this.rondes = 0
         this.maxRondes = 3
@@ -109,6 +109,9 @@ export default class MonedaScene extends Phaser.Scene {
         this.add.text(width / 2 + 90, height / 2 + 85, 'CREU', {
             fontSize: '20px', fill: '#c9a227', fontFamily: 'serif'
         }).setOrigin(0.5)
+        this.btnCreu.on('pointerover', () => this.btnCreu.setStrokeStyle(3, 0xffd700))
+        this.btnCreu.on('pointerout', () => this.btnCreu.setStrokeStyle(2, 0xc9a227))
+        this.btnCreu.on('pointerdown', () => this.triar('creu'))
 
         // Botó sortir
         const btnSortir = this.add.text(16, height - 30, '← Sortir', {

@@ -28,6 +28,15 @@ def wipe():
     print(f"  partides: {pcount}")
     total += pcount
 
+    # Wipe usuaris
+    ucount = 0
+    docs = db.collection("usuaris").get()
+    for doc in docs:
+        doc.reference.delete()
+        ucount += 1
+    print(f"  usuaris: {ucount}")
+    total += ucount
+
     print(f"\nWipe complet. {total} documents eliminats.")
 
 if __name__ == "__main__":

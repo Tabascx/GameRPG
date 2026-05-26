@@ -18,8 +18,8 @@ export default class CasinoScene extends Phaser.Scene {
         this.monedes = data.monedes
         this.dia = data.dia
         this.millores = data.millores
-        this.equipats = data.equipats || []
-        this.inventari = data.inventari || []
+        this.equipats = [...(data.equipats || [])]
+        this.inventari = [...(data.inventari || [])]
         this.capsulaPreu = data.capsulaPreu ?? 50
     }
 

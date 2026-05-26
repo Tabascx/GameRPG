@@ -29,6 +29,7 @@ class AdminMutation:
         total = 0
         total += _wipe_collection("jugadors")
         total += _wipe_collection("partides")
+        total += _wipe_collection("usuaris")
 
         return ResultatNeteja(
             missatge=f"Base de dades netejada. {total} documents eliminats.",

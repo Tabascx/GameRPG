@@ -55,6 +55,19 @@ class GiveItemInput:
     nom_item: str
     raresa: str
 
+@strawberry.input
+class MilloraSyncInput:
+    nom: str
+    descripcio: str
+    nivell: int
+
+@strawberry.input
+class SincronitzarJugadorInput:
+    jugador_id: str
+    monedes: float
+    dia_actual: int
+    millores: list[MilloraSyncInput]
+
 @strawberry.type
 class ErrorJugadorBan:
     missatge: str
@@ -74,6 +87,12 @@ class ErrorJugadorNoTrobat:
 @strawberry.type
 class ErrorItemInvalid:
     missatge: str
+
+@strawberry.type
+class ResultatSincronitzar:
+    missatge: str
+    monedes: float
+    dia_actual: int
 
 def normalitzar_item_id(item_id: str) -> str | None:
     item_id = item_id.strip()

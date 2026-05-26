@@ -11,11 +11,13 @@ from backend.jugadors.types import (
     ComprarMilloraInput,
     PujarNivellInput,
     GiveItemInput,
+    SincronitzarJugadorInput,
     ErrorJugadorBan,
     ErrorSenseMonedes,
     ErrorNoAutoritzat,
     ErrorJugadorNoTrobat,
     ErrorItemInvalid,
+    ResultatSincronitzar,
     normalitzar_jugador_data,
     normalitzar_item_id,
 )
@@ -141,3 +143,34 @@ class JugadorsMutation:
         ref.update({"nivell": data["nivell"]})
 
         return Jugador(id=input.jugador_id, millores=[], inventari=[], **data)
+
+    @strawberry.mutation
+    def sincronitzar_jugador(self, input: SincronitzarJugadorInput, info: Info) -> Union[ResultatSincronitzar, ErrorJugadorNoTrobat]:
+        ref = db.collection("jugadors").document(input.jugador_id)
+        doc = ref.get()
+        if not doc.exists:
+            return ErrorJugadorNoTrobat(missatge=f"Jugador {input.jugador_id} no trobat")
+
+        ref.update({
+            "monedes": input.monedes,
+            "dia_actual": input.dia_actual,
+        })
+
+        inv_ref = ref.collection("inventari")
+        from google.cloud.firestore_v1 import FieldFilter
+        existing = inv_ref.where(filter=FieldFilter("nom", ">=", "")).stream()
+        for m in existing:
+            m.reference.delete()
+
+        for m in input.millores:
+            inv_ref.add({
+                "nom": m.nom,
+                "descripcio": m.descripcio,
+                "nivell": m.nivell,
+            })
+
+        return ResultatSincronitzar(
+            missatge="Jugador sincronitzat",
+            monedes=input.monedes,
+            dia_actual=input.dia_actual,
+        )

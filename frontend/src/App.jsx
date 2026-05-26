@@ -1,25 +1,31 @@
-import { Suspense, lazy, useState } from 'react'
+import { Suspense, lazy, useState, useCallback } from 'react'
 
-const Hangar = lazy(() => import('./pages/Hangar'))
+const Auth = lazy(() => import('./pages/Auth'))
 const Battle = lazy(() => import('./pages/Battle'))
 
 function App() {
-  const [page, setPage] = useState(() => {
-    return localStorage.getItem('jugadorId') ? 'battle' : 'hangar'
-  })
-  const [jugador, setJugador] = useState(null)
+    const [page, setPage] = useState(() => {
+        return localStorage.getItem('token') ? 'battle' : 'auth'
+    })
+    const [jugadorId, setJugadorId] = useState(() => localStorage.getItem('uid') || '')
 
-  return (
-      <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }}>
-        <Suspense fallback={<div className="text-center text-light mt-4">Carregant...</div>}>
-          {page === 'hangar' ? (
-              <Hangar jugador={jugador} setJugador={setJugador} onReady={() => setPage('battle')} />
-          ) : (
-              <Battle jugador={jugador} />
-          )}
-        </Suspense>
-      </div>
-  )
+    const onAuth = useCallback((uid) => {
+        setJugadorId(uid)
+        document.getElementById('game-container')?.focus()
+        setPage('battle')
+    }, [])
+
+    return (
+        <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }}>
+            <Suspense fallback={<div className="text-center text-light mt-4">Carregant...</div>}>
+                {page === 'auth' ? (
+                    <Auth onAuth={onAuth} />
+                ) : (
+                    <Battle jugadorId={jugadorId} />
+                )}
+            </Suspense>
+        </div>
+    )
 }
 
 export default App

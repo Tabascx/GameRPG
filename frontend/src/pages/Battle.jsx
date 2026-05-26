@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import client from '../graphql/client'
-import { COMPRAR_MILLORA, GET_PERFIL, NETEGAR_BASE_DADES } from '../graphql/queries'
+import { GET_PERFIL, REGISTRAR_JUGADOR, NETEGAR_BASE_DADES, SINCRONITZAR_JUGADOR } from '../graphql/queries'
 import BootScene from '../game/BootScene'
 import RecinteScene from '../game/RecinteScene'
 import CasinoScene from '../game/CasinoScene'
@@ -11,16 +11,60 @@ import SlotsScene from '../game/SlotsScene'
 import MonedaScene from '../game/MonedaScene'
 import DausScene from '../game/DausScene'
 
-export default function Battle({ jugador }) {
+export default function Battle({ jugadorId }) {
     const gameRef = useRef(null)
     const containerRef = useRef(null)
-    const jugadorRef = useRef(jugador)
+    const jugadorIdRef = useRef(jugadorId)
+    const [jugador, setJugador] = useState(null)
 
     useEffect(() => {
-        jugadorRef.current = jugador
-    }, [jugador])
+        jugadorIdRef.current = jugadorId
+    }, [jugadorId])
 
     useEffect(() => {
+        if (!jugadorId) return
+
+        const resetFlag = localStorage.getItem('irongate_reset')
+        const uid = localStorage.getItem('uid') || 'anonim'
+        const hasSave = localStorage.getItem(`irongate_save_${uid}`)
+
+        if (resetFlag && !hasSave) {
+            localStorage.removeItem('irongate_reset')
+            const nick = localStorage.getItem('nickname') || 'Presoner'
+            setJugador({
+                nickname: nick,
+                monedes: 400,
+                diaActual: 1,
+                millores: [],
+                inventari: []
+            })
+            return
+        }
+
+        client.query({
+            query: GET_PERFIL,
+            variables: { id: jugadorId },
+            fetchPolicy: 'network-only'
+        }).then(({ data }) => {
+            if (data?.perfilJugador) {
+                setJugador(data.perfilJugador)
+            } else {
+                // Auto-registrar jugador si no existe
+                const nick = localStorage.getItem('nickname') || 'Presoner'
+                client.mutate({
+                    mutation: REGISTRAR_JUGADOR,
+                    variables: { nickname: nick }
+                }).then(({ data: rData }) => {
+                    if (rData?.registrarJugador?.__typename === 'Jugador') {
+                        setJugador(rData.registrarJugador)
+                    }
+                })
+            }
+        }).catch(() => {})
+    }, [jugadorId])
+
+    useEffect(() => {
+        if (!jugador) return
         if (gameRef.current) return
 
         const w = window.innerWidth
@@ -44,11 +88,11 @@ export default function Battle({ jugador }) {
         })
 
         game.scene.add('BootScene', BootScene, true, {
-            nickname: jugador?.nickname || 'Presoner',
-            monedes: jugador?.monedes ?? 400,
-            dia: jugador?.diaActual ?? 1,
-            millores: jugador?.millores || [],
-            inventari: jugador?.inventari || []
+            nickname: jugador.nickname || 'Presoner',
+            monedes: jugador.monedes ?? 400,
+            dia: jugador.diaActual ?? 1,
+            millores: jugador.millores || [],
+            inventari: jugador.inventari || []
         })
         game.scene.add('RecinteScene', RecinteScene, false)
         game.scene.add('CasinoScene', CasinoScene, false)
@@ -60,40 +104,30 @@ export default function Battle({ jugador }) {
 
         gameRef.current = game
 
-        // Bridge: compra des de Phaser → GraphQL
-        const compraHandler = async (e) => {
-            const j = jugadorRef.current
-            if (!j?.id) return
-
+        const syncHandler = async (e) => {
+            const jId = jugadorIdRef.current
+            if (!jId) {
+                window.dispatchEvent(new CustomEvent('sincronitzacio-completada', { detail: { ok: false } }))
+                return
+            }
             try {
-                const { data } = await client.mutate({
-                    mutation: COMPRAR_MILLORA,
+                await client.mutate({
+                    mutation: SINCRONITZAR_JUGADOR,
                     variables: {
-                        jugadorId: j.id,
-                        nom: e.detail.nom,
-                        descripcio: e.detail.descripcio
+                        jugadorId: jId,
+                        monedes: e.detail.monedes,
+                        diaActual: e.detail.diaActual,
+                        millores: e.detail.millores || []
                     }
                 })
-
-                // Refrescar perfil
-                const { data: perfilData } = await client.query({
-                    query: GET_PERFIL,
-                    variables: { id: j.id },
-                    fetchPolicy: 'network-only'
-                })
-
-                if (perfilData?.perfilJugador) {
-                    window.dispatchEvent(new CustomEvent('perfil-updated', {
-                        detail: perfilData.perfilJugador
-                    }))
-                }
+                window.dispatchEvent(new CustomEvent('sincronitzacio-completada', { detail: { ok: true } }))
             } catch (err) {
-                console.error('Error compra:', err)
+                console.error('Error sincronitzar:', err)
+                window.dispatchEvent(new CustomEvent('sincronitzacio-completada', { detail: { ok: false } }))
             }
         }
-        window.addEventListener('comprar-millora', compraHandler)
+        window.addEventListener('sincronitzar-jugador', syncHandler)
 
-        // Bridge: netejar base de dades des de Phaser → GraphQL
         const wipeHandler = async (e) => {
             try {
                 const { data } = await client.mutate({
@@ -101,7 +135,7 @@ export default function Battle({ jugador }) {
                     variables: { password: e.detail.password }
                 })
                 window.dispatchEvent(new CustomEvent('neteja-resultat', {
-                    detail: data?.netejarBaseDades || { missatge: 'Error de connexió' }
+                    detail: data?.netejarBaseDades || { missatge: 'Error de connexio' }
                 }))
             } catch (err) {
                 window.dispatchEvent(new CustomEvent('neteja-resultat', {
@@ -112,12 +146,22 @@ export default function Battle({ jugador }) {
         window.addEventListener('netejar-base-dades', wipeHandler)
 
         return () => {
-            window.removeEventListener('comprar-millora', compraHandler)
+            window.removeEventListener('sincronitzar-jugador', syncHandler)
             window.removeEventListener('netejar-base-dades', wipeHandler)
             game.destroy(true)
             gameRef.current = null
         }
     }, [jugador])
+
+    if (!jugador) {
+        return (
+            <div ref={containerRef} style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }}>
+                <div className="d-flex justify-content-center align-items-center h-100">
+                    <div className="text-center text-light">Carregant perfil...</div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div ref={containerRef} style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }} />
