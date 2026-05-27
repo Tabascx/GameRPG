@@ -10,6 +10,7 @@ import RuletaScene from '../game/RuletaScene'
 import SlotsScene from '../game/SlotsScene'
 import MonedaScene from '../game/MonedaScene'
 import DausScene from '../game/DausScene'
+import BossBlackjackScene from '../game/BossBlackjackScene'
 
 export default function Battle({ jugadorId }) {
     const gameRef = useRef(null)
@@ -101,6 +102,7 @@ export default function Battle({ jugadorId }) {
         game.scene.add('SlotsScene', SlotsScene, false)
         game.scene.add('MonedaScene', MonedaScene, false)
         game.scene.add('DausScene', DausScene, false)
+        game.scene.add('BossBlackjackScene', BossBlackjackScene, false)
 
         gameRef.current = game
 
@@ -157,7 +159,7 @@ export default function Battle({ jugadorId }) {
         return (
             <div ref={containerRef} style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }}>
                 <div className="d-flex justify-content-center align-items-center h-100">
-                    <div className="text-center text-light">Carregant perfil...</div>
+                    <div className="text-center text-light">Cargando perfil...</div>
                 </div>
             </div>
         )

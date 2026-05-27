@@ -366,7 +366,7 @@ export default class RecinteScene extends Phaser.Scene {
                                 })
                                 btn.setFill('#ff4444')
                                 this.time.delayedCall(400, () => btn.setFill('#ffd700'))
-                                const msg = this.add.text(cx + rowW / 2, rowY + 35, 'FONS INSUFICIENTS!', {
+                                const msg = this.add.text(cx + rowW / 2, rowY + 35, 'FONDOS INSUFICIENTES!', {
                                     fontSize: '10px', fill: '#ff4444', fontFamily: 'serif',
                                     stroke: '#000', strokeThickness: 2
                                 }).setOrigin(0.5).setDepth(59).setScrollFactor(0)
@@ -395,7 +395,7 @@ export default class RecinteScene extends Phaser.Scene {
                                 onComplete: () => ef.destroy() })
                         })
                     } else {
-                        addItem(this.add.text(cx + rowW / 2, rowY + 10, 'MAX', {
+                        addItem(this.add.text(cx + rowW / 2, rowY + 10, 'MÁX', {
                             fontSize: '12px', fill: '#44ff44', fontFamily: 'serif',
                             stroke: '#000', strokeThickness: 2
                         }).setOrigin(1, 0).setDepth(52))
@@ -420,9 +420,9 @@ export default class RecinteScene extends Phaser.Scene {
                     { fontSize: o?.size || '13px', fill: c || '#e8d5a3', fontFamily: 'serif',
                       stroke: '#000', strokeThickness: 2 }).setOrigin(o?.ox ?? 0, o?.oy ?? 0.5).setDepth(52))
 
-                txt(cx, cy - 60, 'Capsula Aleatoria', '#c9a227', { size: '18px', ox: 0.5 })
-                txt(cx, cy - 30, `Preu: ${preu}$`, '#ffd700', { size: '15px', ox: 0.5 })
-                txt(cx, cy, '50% comu | 25% raro | 15% epic | 5% legendari', '#888', { size: '11px', ox: 0.5 })
+                txt(cx, cy - 60, 'Cápsula Aleatoria', '#c9a227', { size: '18px', ox: 0.5 })
+                txt(cx, cy - 30, `Precio: ${preu}$`, '#ffd700', { size: '15px', ox: 0.5 })
+                txt(cx, cy, '50% común | 25% raro | 15% épico | 5% legendario', '#888', { size: '11px', ox: 0.5 })
 
                 const btn = addItem(this.add.rectangle(cx, cy + 35, 160, 38, 0x1a3d06)
                     .setDepth(52).setStrokeStyle(2, 0xc9a227).setInteractive({ useHandCursor: true }))
@@ -434,7 +434,7 @@ export default class RecinteScene extends Phaser.Scene {
                 btn.on('pointerout', () => btn.setStrokeStyle(2, 0xc9a227))
                 btn.on('pointerdown', () => {
                     if (this.monedes < preu) {
-                        const f = addItem(this.add.text(cx, cy + 70, 'FONS INSUFICIENTS!', {
+                        const f = addItem(this.add.text(cx, cy + 70, 'FONDOS INSUFICIENTES!', {
                             fontSize: '13px', fill: '#ff4444', fontFamily: 'serif',
                             stroke: '#000', strokeThickness: 2
                         }).setOrigin(0.5).setDepth(53))
@@ -442,7 +442,7 @@ export default class RecinteScene extends Phaser.Scene {
                         return
                     }
                     if (this.inventari.length >= 24) {
-                        const f = addItem(this.add.text(cx, cy + 70, 'INVENTARI PLE!', {
+                        const f = addItem(this.add.text(cx, cy + 70, 'INVENTARIO LLENO!', {
                             fontSize: '13px', fill: '#ff4444', fontFamily: 'serif',
                             stroke: '#000', strokeThickness: 2
                         }).setOrigin(0.5).setDepth(53))
@@ -637,7 +637,7 @@ export default class RecinteScene extends Phaser.Scene {
             }
 
             const eqY = gy + rows * (cellH + 2) + 10
-            txt(gx, eqY - 2, 'EQUIPATS', '#c9a227', { size: '10px' })
+            txt(gx, eqY - 2, 'EQUIPADOS', '#c9a227', { size: '10px' })
             const slotW = (panelW - 20) / 4
             for (let i = 0; i < 4; i++) {
                 const sx = gx + i * slotW + slotW / 2
@@ -663,7 +663,7 @@ export default class RecinteScene extends Phaser.Scene {
                     slotBg.on('pointerover', () => etip.setAlpha(1))
                     slotBg.on('pointerout', () => etip.setAlpha(0))
                 } else {
-                    txt(sx, eqY + 20, `Slot ${i + 1}`, '#444', { size: '8px', ox: 0.5 })
+                    txt(sx, eqY + 20, `Ranura ${i + 1}`, '#444', { size: '8px', ox: 0.5 })
                 }
             }
 
@@ -738,7 +738,7 @@ export default class RecinteScene extends Phaser.Scene {
             return t
         }
 
-        addTxt(cx, cy - 70, 'MENU DE TRUCS', '15px', '#88ff88')
+        addTxt(cx, cy - 70, 'MENÚ DE TRUCOS', '15px', '#88ff88')
 
         const ferEfecteMonedes = (x, y) => {
             const t = this.add.text(x, y - 10, '+1000$', { fontSize: '18px', fill: '#44ff44', fontFamily: 'serif',
@@ -752,24 +752,25 @@ export default class RecinteScene extends Phaser.Scene {
             ferEfecteMonedes(cx, cy - 38)
         })
 
-        addBtn(cx, cy - 8, 'AFEGIR OBJECTE', () => {
-            const id = window.prompt('ID de l\'objecte (1-3 digits):')
+        addBtn(cx, cy - 8, 'AÑADIR OBJETO', () => {
+            const id = window.prompt('ID del objeto (1-3 dígitos):')
             if (!id) return
             if (!/^\d{1,3}$/.test(id.trim())) {
-                window.alert('ID invàlid!')
+                window.alert('ID inválido!')
                 return
             }
-            window.alert(`Objecte ${id.padStart(3, '0')} afegit! (local)`)
+            window.alert(`Objeto ${id.padStart(3, '0')} añadido! (local)`)
         })
 
         // Selector de joc forçat
         const jocsOpcs = [
-            { label: 'Joc: --- Cap ---', value: '' },
-            { label: 'Joc: Blackjack', value: 'BlackjackScene' },
-            { label: 'Joc: Ruleta', value: 'RuletaScene' },
-            { label: 'Joc: Slots', value: 'SlotsScene' },
-            { label: 'Joc: Cara o Creu', value: 'MonedaScene' },
-            { label: 'Joc: Daus (Boss)', value: 'DausScene' },
+            { label: 'Juego: --- Nada ---', value: '' },
+            { label: 'Juego: Blackjack', value: 'BlackjackScene' },
+            { label: 'Juego: Ruleta', value: 'RuletaScene' },
+            { label: 'Juego: Slots', value: 'SlotsScene' },
+            { label: 'Juego: Cara o Cruz', value: 'MonedaScene' },
+            { label: 'Juego: Dados (Boss)', value: 'DausScene' },
+            { label: 'Juego: Blackjack (Boss)', value: 'BossBlackjackScene' },
         ]
         let idxJoc = Math.max(0, jocsOpcs.findIndex(j => j.value === localStorage.getItem('cheat_joc')))
         const jocTxt = addBtn(cx, cy + 22, jocsOpcs[idxJoc].label, () => {
@@ -796,15 +797,15 @@ export default class RecinteScene extends Phaser.Scene {
             t.on('pointerout', () => { t.x = cx; shaking = false })
             t.on('pointerdown', () => {
                 t.x = cx; shaking = false
-                const pwd = window.prompt('Contrasenya admin:')
-                if (pwd !== 'admin123') { window.alert('Contrasenya incorrecta'); return }
+                const pwd = window.prompt('Contraseña admin:')
+                if (pwd !== 'admin123') { window.alert('Contraseña incorrecta'); return }
                 cb()
             })
             return t
         }
 
         btnPerillos(cy + 52, 'BORRAR PERFIL', () => {
-            if (!window.confirm('SEGUR? Tornaras al menu principal.')) return
+            if (!window.confirm('¿SEGURO? Volverás al menú principal.')) return
             const uid = localStorage.getItem('uid') || 'anonim'
             localStorage.removeItem('token')
             localStorage.removeItem('uid')
@@ -814,8 +815,8 @@ export default class RecinteScene extends Phaser.Scene {
             window.location.reload()
         })
 
-        btnPerillos(cy + 82, 'WIPE GLOBAL', () => {
-            if (!window.confirm('SEGUR QUE VOLS NETEGAR TOTA LA BASE DE DADES?\nAquesta accio es irreversible.')) return
+        btnPerillos(cy + 82, 'BORRADO GLOBAL', () => {
+            if (!window.confirm('¿SEGURO QUE QUIERES BORRAR TODA LA BASE DE DATOS?\nEsta acción es irreversible.')) return
             window.dispatchEvent(new CustomEvent('netejar-base-dades', { detail: { password: 'admin123' } }))
         })
 
@@ -886,7 +887,7 @@ export default class RecinteScene extends Phaser.Scene {
             this.tweens.add({ targets: f, alpha: 0, delay: 1200, duration: 600, onComplete: () => f.destroy() })
         }
 
-        txt(cx, cy - 85, 'MENU', '#c9a227', { size: '22px', ox: 0.5 })
+        txt(cx, cy - 85, 'MENÚ', '#c9a227', { size: '22px', ox: 0.5 })
 
         const mkCloseBtn = (x, y, cb) => {
             const c = this.add.text(x, y, 'X', {
@@ -926,14 +927,14 @@ export default class RecinteScene extends Phaser.Scene {
                 }))
                 feedback('Partida guardada!', '#00ff88')
             } catch (e) {
-                feedback('Error en guardar!', '#ff4444')
+                feedback('Error al guardar!', '#ff4444')
             }
         })
 
         const uid = localStorage.getItem('uid') || 'anonim'
         const teCarga = localStorage.getItem(`irongate_save_${uid}`)
         if (teCarga) {
-            btn(cy + 0, 'Carregar partida', () => {
+            btn(cy + 0, 'Cargar partida', () => {
                 try {
                     const d = JSON.parse(teCarga)
                     this.nickname = d.nickname
@@ -943,13 +944,13 @@ export default class RecinteScene extends Phaser.Scene {
                     this.inventari = [...(d.inventari || [])]
                     this.equipats = [...(d.equipats || Array.from({ length: 4 }, () => null))]
                     this.capsulaPreu = d.capsulaPreu ?? 50
-                    feedback('Partida carregada!', '#ffd700')
+                    feedback('Partida cargada!', '#ffd700')
                 } catch (e) {
-                    feedback('Error en carregar!', '#ff4444')
+                    feedback('Error al cargar!', '#ff4444')
                 }
             })
         } else {
-            txt(cx, cy + 0, 'Carregar partida', '#555', { size: '14px', ox: 0.5 })
+            txt(cx, cy + 0, 'Cargar partida', '#555', { size: '14px', ox: 0.5 })
         }
 
         btn(cy + 35, 'Continuar', tancar)
@@ -957,7 +958,7 @@ export default class RecinteScene extends Phaser.Scene {
         // RESET RUN (vermell, vibra, doble click)
         let resetClicks = 0
         let resetExecutat = false
-        const btnReset = txt(cx, cy + 70, 'RESET RUN', '#ff4444', { size: '13px', ox: 0.5 })
+        const btnReset = txt(cx, cy + 70, 'REINICIAR', '#ff4444', { size: '13px', ox: 0.5 })
         btnReset.setBackgroundColor('#1a120888').setPadding(14, 7)
             .setInteractive({ useHandCursor: true })
         let rshaking = false
@@ -974,14 +975,14 @@ export default class RecinteScene extends Phaser.Scene {
             if (resetExecutat) return
             resetClicks++
             if (resetClicks === 1) {
-                btnReset.setText('CONFIRMAR RESET')
+                btnReset.setText('CONFIRMAR REINICIO')
                 btnReset.setFill('#ff0000')
                 this.time.delayedCall(2000, () => {
-                    if (resetClicks === 1) { resetClicks = 0; btnReset.setText('RESET RUN'); btnReset.setFill('#ff4444') }
+                    if (resetClicks === 1) { resetClicks = 0; btnReset.setText('REINICIAR'); btnReset.setFill('#ff4444') }
                 })
             } else {
                 resetExecutat = true
-                btnReset.setText('Reiniciant...')
+                btnReset.setText('Reiniciando...')
                 btnReset.setFill('#888888')
                 const uid = localStorage.getItem('uid') || 'anonim'
                 localStorage.setItem('irongate_reset', '1')
@@ -1003,7 +1004,7 @@ export default class RecinteScene extends Phaser.Scene {
             }
         })
 
-        const btnSortir = txt(cx, cy + 105, 'Tancar sessio', '#ff6666', { size: '16px', ox: 0.5 })
+        const btnSortir = txt(cx, cy + 105, 'Cerrar sesión', '#ff6666', { size: '16px', ox: 0.5 })
         btnSortir.setBackgroundColor('#1a120888').setPadding(14, 7)
             .setInteractive({ useHandCursor: true })
         btnSortir.on('pointerover', () => btnSortir.setFill('#ff0000'))

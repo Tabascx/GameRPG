@@ -4,9 +4,9 @@ const CARD_W = 109
 const CARD_H = 148
 const CARD_GAP = 107
 
-export default class BlackjackScene extends Phaser.Scene {
+export default class BossBlackjackScene extends Phaser.Scene {
     constructor() {
-        super({ key: 'BlackjackScene' })
+        super({ key: 'BossBlackjackScene' })
     }
 
     init(data) {
@@ -17,15 +17,18 @@ export default class BlackjackScene extends Phaser.Scene {
         this.equipats = [...(data.equipats || [])]
         this.inventari = [...(data.inventari || [])]
         this.capsulaPreu = data.capsulaPreu ?? 50
-        this.mans = 0
-        this.maxMans = 5
+        this.rondes = 0
+        this.maxRondes = 3
         this.guanyades = 0
         this.guanyBrut = 0
         this.perduaBruta = 0
         this.perduaSeguro = 0
+        this.coinflipWon = false
+        this.flipping = false
+        this.autoStandResolved = false
     }
 
-    minBet() { return Math.max(5, Math.floor(this.monedes * 0.1)) }
+    minBet() { return Math.max(10, Math.floor(this.monedes * 0.2)) }
 
     SUITS = ['Clubs', 'Diamonds', 'Hearts', 'Spades']
     RANKS = [
@@ -81,22 +84,23 @@ export default class BlackjackScene extends Phaser.Scene {
     create() {
         localStorage.removeItem('cheat_blackjack')
         localStorage.removeItem('cheat_blackjack_joker')
+        localStorage.removeItem('cheat_moneda')
         const { width, height } = this.scale
         this.add.image(width / 2, height / 2, 'casinoBg').setDisplaySize(width, height)
         this.afegirVinyeta(width, height)
 
         this.aposta = this.minBet()
 
-        this.add.text(width / 2, 30, 'BLACKJACK', {
-            fontSize: '36px', fill: '#c9a227', fontFamily: 'serif',
-            stroke: '#000', strokeThickness: 4
+        this.add.text(width / 2, 28, 'BLACKJACK DEL BOSS', {
+            fontSize: '32px', fill: '#ff4444', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 5
         }).setOrigin(0.5)
 
-        this.infoText = this.add.text(width / 2, 60, `Mano ${this.mans + 1}/${this.maxMans}`, {
-            fontSize: '20px', fill: '#e8d5a3', fontFamily: 'serif'
+        this.rondesText = this.add.text(width / 2, 68, 'Dia 10 — Ronda 1/3', {
+            fontSize: '16px', fill: '#e8d5a3', fontFamily: 'serif'
         }).setOrigin(0.5)
 
-        this.ruleText = this.add.text(width / 2, height / 2 - 20, 'El crupier se planta en 16', {
+        this.ruleText = this.add.text(width / 2, height / 2 - 20, 'El crupier es planta en 17', {
             fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5)
@@ -106,7 +110,8 @@ export default class BlackjackScene extends Phaser.Scene {
         const selX = this.deckX
         const selY = height / 2
 
-        this.add.text(selX, selY - 80, 'APUESTA', {
+        // Bet controls (right side)
+        this.add.text(selX, selY - 105, 'APUESTA', {
             fontSize: '14px', fill: '#a08c5a', fontFamily: 'serif'
         }).setOrigin(0.5)
 
@@ -120,9 +125,9 @@ export default class BlackjackScene extends Phaser.Scene {
             t.on('pointerdown', cb)
             return t
         }
-        apBtn(selY - 55, '\u25B2 +10', () => this.canviarAposta(10))
-        apBtn(selY - 28, '\u25B2 +5', () => this.canviarAposta(5))
-        this.betAmountText = this.add.text(selX, selY + 5, this.aposta + '$', {
+        apBtn(selY - 80, '\u25B2 +10', () => this.canviarAposta(10))
+        apBtn(selY - 53, '\u25B2 +5', () => this.canviarAposta(5))
+        this.betAmountText = this.add.text(selX, selY - 20, this.aposta + '$', {
             fontSize: '32px', fill: '#ffd700', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 3, backgroundColor: '#1a120888',
             padding: { x: 14, y: 6 }
@@ -131,13 +136,45 @@ export default class BlackjackScene extends Phaser.Scene {
             const v = window.prompt('Apuesta (min ' + this.minBet() + '$, max ' + this.monedes + '$):', '' + this.aposta)
             if (v !== null) this.establirAposta(parseInt(v, 10))
         })
-        apBtn(selY + 38, '\u25BC -5', () => this.canviarAposta(-5))
-        apBtn(selY + 65, '\u25BC -10', () => this.canviarAposta(-10))
+        apBtn(selY + 8, '\u25BC -5', () => this.canviarAposta(-5))
+        apBtn(selY + 35, '\u25BC -10', () => this.canviarAposta(-10))
 
-        this.cartesJugador = []
-        this.cartesCrupier = []
-        this.valorJugador = 0
-        this.valorCrupier = 0
+        // Coinflip elements (center)
+        this.coinY = height / 2 - 60
+        this.coin = this.add.circle(width / 2, this.coinY, 70, 0xc9a227)
+            .setStrokeStyle(4, 0xffd700)
+        this.coinText = this.add.text(width / 2, this.coinY, '?', {
+            fontSize: '52px', fill: '#1a1208', fontFamily: 'serif', fontStyle: 'bold'
+        }).setOrigin(0.5)
+        this.coinLabel = this.add.text(width / 2, this.coinY - 95, 'VOLTEO', {
+            fontSize: '15px', fill: '#e8d5a3', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5)
+
+        this.coinflipResultText = this.add.text(width / 2, this.coinY + 85, '', {
+            fontSize: '18px', fill: '#ffd700', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 3
+        }).setOrigin(0.5)
+
+        const btnCW = 150
+        const btnCH = 50
+        this.btnCara = this.add.rectangle(width / 2 - 85, this.coinY + 30 + 55, btnCW, btnCH, 0x1a3d06)
+            .setInteractive({ useHandCursor: true }).setStrokeStyle(2, 0xc9a227)
+        this.btnCaraText = this.add.text(width / 2 - 85, this.coinY + 30 + 55, 'CARA', {
+            fontSize: '20px', fill: '#c9a227', fontFamily: 'serif'
+        }).setOrigin(0.5)
+        this.btnCara.on('pointerover', () => this.btnCara.setStrokeStyle(3, 0xffd700))
+        this.btnCara.on('pointerout', () => this.btnCara.setStrokeStyle(2, 0xc9a227))
+        this.btnCara.on('pointerdown', () => this.triar('cara'))
+
+        this.btnCreu = this.add.rectangle(width / 2 + 85, this.coinY + 30 + 55, btnCW, btnCH, 0x3d0606)
+            .setInteractive({ useHandCursor: true }).setStrokeStyle(2, 0xc9a227)
+        this.btnCreuText = this.add.text(width / 2 + 85, this.coinY + 30 + 55, 'CREU', {
+            fontSize: '20px', fill: '#c9a227', fontFamily: 'serif'
+        }).setOrigin(0.5)
+        this.btnCreu.on('pointerover', () => this.btnCreu.setStrokeStyle(3, 0xffd700))
+        this.btnCreu.on('pointerout', () => this.btnCreu.setStrokeStyle(2, 0xc9a227))
+        this.btnCreu.on('pointerdown', () => this.triar('creu'))
 
         this.dealerText = this.add.text(width / 2, 100, 'Crupier: ?', {
             fontSize: '26px', fill: '#ff8888', fontFamily: 'serif'
@@ -156,201 +193,20 @@ export default class BlackjackScene extends Phaser.Scene {
             stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5)
 
+        this.cartesJugador = []
+        this.cartesCrupier = []
+        this.valorJugador = 0
+        this.valorCrupier = 0
+
         this.btnPedirCarta = this.addBtn(width / 2 - 80, height - 35, 'CARTA', 0x1a3d06, () => this.pedirCarta())
         this.btnPlantar = this.addBtn(width / 2 + 80, height - 35, 'PLANTAR', 0x3d1a06, () => this.plantar())
         this._mostrarBotonsCartes(false)
-
-        this.btnApostar = this.addBtn(width / 2, height / 2 + 60, 'APOSTAR', 0x1a3d06, () => this.confirmarAposta())
 
         this.dibuixarEquipats()
 
         this.input.keyboard.on('keydown-P', (event) => {
             if (event.altKey) this.obrirCheats()
         })
-    }
-
-    confirmarAposta() {
-        if (this.aposta < this.minBet() || this.aposta > this.monedes) return
-        this.btnApostar.setVisible(false)
-        this.btnApostar._btnText.setVisible(false)
-        this._mostrarBotonsCartes(true)
-        this.btnPedirCarta.setInteractive({ useHandCursor: true })
-        this.btnPlantar.setInteractive({ useHandCursor: true })
-        this.repartirMa()
-    }
-
-    afegirVinyeta(w, h) {
-        const rt = this.add.renderTexture(0, 0, w, h).setDepth(1)
-        rt.fill(0x000000, 0.55)
-        const circ = this.make.graphics({ add: false })
-        circ.fillStyle(0xffffff)
-        circ.fillCircle(0, 0, 260)
-        const key = 'spot_' + (this.vignetteId || 0)
-        this.vignetteId = (this.vignetteId || 0) + 1
-        circ.generateTexture(key, 520, 520)
-        circ.destroy()
-        const eraser = this.add.image(w / 2, h / 2 - 40, key).setVisible(false)
-        rt.erase(eraser, w / 2, h / 2 - 40)
-        eraser.destroy()
-    }
-
-    dibuixarEquipats() {
-        const items = (this.equipats || []).filter(Boolean)
-        if (items.length === 0) return
-        const { width } = this.scale
-        const startX = 90
-        const y = 118
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i]
-            const x = startX + i * 90
-            const cor = item.raresa === 'legendari' ? '#ff8800'
-                : item.raresa === 'epic' ? '#cc44ff'
-                : item.raresa === 'raro' ? '#44aaff' : '#c9a227'
-            const t = this.add.text(x, y, item.nomItem || item.nom || '?', {
-                fontSize: '11px', fill: cor, fontFamily: 'serif',
-                backgroundColor: '#1a120888', padding: { x: 6, y: 3 }
-            }).setOrigin(0.5).setInteractive({ useHandCursor: true })
-            let tip = null
-            t.on('pointerover', () => {
-                tip = this.add.text(x, y + 20, this.descEfecte(item), {
-                    fontSize: '10px', fill: '#e8d5a3', fontFamily: 'serif',
-                    backgroundColor: '#0d0a0688', padding: { x: 6, y: 4 },
-                    stroke: '#000', strokeThickness: 2
-                }).setOrigin(0.5).setDepth(40)
-            })
-            t.on('pointerout', () => { if (tip) { tip.destroy(); tip = null } })
-        }
-    }
-
-    descEfecte(item) {
-        const ef = item.efecte
-        if (!ef) return 'Sense efecte'
-        const m = {
-            bonus_guany: `+${Math.round(ef.valor * 100)}% guanys`,
-            reduccio_perdua: `-${Math.round(ef.valor * 100)}% perdues`,
-            prob_guany_ruleta: `+${Math.round(ef.valor * 100)}% prob ruleta`,
-            prob_jackpot_slots: `+${Math.round(ef.valor * 100)}% jackpot`,
-            prob_guany_moneda: `+${Math.round(ef.valor * 100)}% prob moneda`,
-            prob_joker: `+${Math.round(ef.valor * 100)}% prob comodin`,
-            as_seguro: 'As=11 sempre',
-            carta_extra: '+1 carta max',
-            ronda_extra: '+1 ronda',
-            monedes_extra: `+${ef.valor}$ inici`,
-            revelar_crupier: 'Revela carta',
-            anular_perdua: 'Anula 1 perdua',
-            doble_aposta: 'Duplica aposta',
-        }
-        return `${item.raresa || '?'}: ${m[ef.tipus] || ef.tipus}`
-    }
-
-    getCardX(count, i) {
-        const totalW = (count - 1) * CARD_GAP
-        return this.scale.width / 2 - totalW / 2 + i * CARD_GAP
-    }
-
-    flyCardTo(key, tx, ty, dataTag) {
-        const img = this.add.image(this.deckX, this.deckY, key)
-            .setDisplaySize(CARD_W, CARD_H).setData('carta', true).setAlpha(0.6)
-        this.tweens.add({
-            targets: img, x: tx, y: ty, alpha: 1, duration: 250, ease: 'Power2'
-        })
-        if (dataTag === 'dealer1') this.dealerCard1 = img
-        if (dataTag) img.setData('tag', dataTag)
-        return img
-    }
-
-    drawDeckStack() {
-        this.children.list
-            .filter(c => c.getData && c.getData('deckStack'))
-            .forEach(c => c.destroy())
-        const n = Math.min(4, this.deck.length)
-        for (let i = 0; i < n; i++) {
-            this.add.image(this.deckX - i * 2, this.deckY - i * 2, 'cardBack')
-                .setDisplaySize(CARD_W, CARD_H).setData('deckStack', true).setDepth(0)
-        }
-    }
-
-    findPlayerImgs() {
-        const { height } = this.scale
-        const midY = height / 2
-        return this.children.list.filter(c =>
-            c.getData && c.getData('carta') && c.y > midY &&
-            c.texture && c.texture.key !== 'cardJoker'
-        ).sort((a, b) => a.x - b.x)
-    }
-
-    reposicionar() {
-        const imgs = this.findPlayerImgs()
-        const cards = this.cartesJugador.filter(c => c.rank !== '*')
-        for (let i = 0; i < Math.min(imgs.length, cards.length); i++) {
-            const tx = this.getCardX(cards.length, i)
-            this.tweens.add({ targets: imgs[i], x: tx, duration: 200, ease: 'Power2' })
-        }
-    }
-
-    efecteJoker(jokerIdx, jokerImg) {
-        if (!this.dealerCard1 || !this.cartesCrupier[0] || !jokerImg) return
-        this.btnPedirCarta.disableInteractive()
-        this.btnPlantar.disableInteractive()
-
-        const tx = this.dealerCard1.x
-        const ty = this.dealerCard1.y
-
-        this.tweens.add({
-            targets: jokerImg,
-            x: tx, y: ty,
-            scaleX: 0.6, scaleY: 0.6,
-            duration: 600,
-            ease: 'Power2',
-            onComplete: () => {
-                this.dealerCard1.setTexture(this.cartesCrupier[0].img)
-                this.valorCrupier = this.calcHand(this.cartesCrupier)
-                this.dealerText.setText(`Crupier: ${this.valorCrupier}`)
-
-                this.tweens.add({
-                    targets: [this.dealerCard1, jokerImg],
-                    x: tx + 10, duration: 50, yoyo: true, repeat: 5,
-                    onComplete: () => {
-                        this.cartesJugador = this.cartesJugador.filter((_, i) => i !== jokerIdx)
-                        this.valorJugador = this.calcHand(this.cartesJugador)
-                        this.jugadorText.setText(`Tu: ${this.valorJugador}`)
-                        this.reposicionar()
-
-                        this.tweens.add({
-                            targets: jokerImg,
-                            y: -120, alpha: 0, duration: 400,
-                            onComplete: () => {
-                                jokerImg.destroy()
-                                this.btnPedirCarta.setInteractive({ useHandCursor: true })
-                                this.btnPlantar.setInteractive({ useHandCursor: true })
-                            }
-                })
-            }
-        })
-
-        this.time.delayedCall(1000, () => {
-            if (this.valorJugador === 21) {
-                this.acabarMa('blackjack')
-            }
-        })
-            }
-        })
-    }
-
-    canviarAposta(delta) { this.establirAposta(this.aposta + delta) }
-
-    establirAposta(v) {
-        const min = this.minBet()
-        if (isNaN(v) || v < min) v = min
-        if (v > this.monedes) v = this.monedes
-        this.aposta = v
-        this.betAmountText.setText(`${this.aposta}$`)
-    }
-
-    ajustarAposta() {
-        const min = this.minBet()
-        if (this.aposta < min) this.establirAposta(min)
-        else if (this.aposta > this.monedes) this.establirAposta(this.monedes)
     }
 
     addBtn(x, y, text, color, callback) {
@@ -370,9 +226,92 @@ export default class BlackjackScene extends Phaser.Scene {
         this.btnPedirCarta._btnText.setVisible(visible)
         this.btnPlantar.setVisible(visible)
         this.btnPlantar._btnText.setVisible(visible)
+        this.ruleText.setVisible(visible)
+    }
+
+    canviarAposta(delta) { this.establirAposta(this.aposta + delta) }
+
+    establirAposta(v) {
+        const min = this.minBet()
+        if (isNaN(v) || v < min) v = min
+        if (v > this.monedes) v = this.monedes
+        this.aposta = v
+        this.betAmountText.setText(`${this.aposta}$`)
+    }
+
+    ajustarAposta() {
+        const min = this.minBet()
+        if (this.aposta < min) this.establirAposta(min)
+        else if (this.aposta > this.monedes) this.establirAposta(this.monedes)
+    }
+
+    triar(opcio) {
+        if (this.flipping || this.rondes >= this.maxRondes) return
+        if (this.aposta < this.minBet() || this.aposta > this.monedes) return
+        this.flipping = true
+
+        this.btnCara.disableInteractive()
+        this.btnCreu.disableInteractive()
+        this.resultText.setText('')
+        this.coinflipResultText.setText('')
+        this.coinLabel.setText('')
+
+        const totalGirs = 6
+        let gir = 0
+        const gira = () => {
+            this.tweens.add({
+                targets: this.coin, scaleX: 0, duration: 60, ease: 'Sine.easeIn',
+                onComplete: () => {
+                    this.coinText.setText(gir % 2 === 0 ? '✝' : 'C')
+                    this.coin.setFillStyle(gir % 2 === 0 ? 0x888888 : 0xc9a227)
+                    this.tweens.add({
+                        targets: this.coin, scaleX: 1, duration: 60, ease: 'Sine.easeOut',
+                        onComplete: () => {
+                            gir++
+                            if (gir < totalGirs) {
+                                gira()
+                            } else {
+                                const cheat = localStorage.getItem('cheat_moneda')
+                                const resultat = cheat || (Math.random() < 0.5 ? 'cara' : 'creu')
+                                const guanya = opcio === resultat
+
+                                this.coinText.setText(resultat === 'cara' ? 'C' : '✝')
+                                this.coinLabel.setText(resultat === 'cara' ? 'CARA' : 'CREU')
+                                this.coin.setFillStyle(resultat === 'cara' ? 0xc9a227 : 0x888888)
+
+                                if (guanya) {
+                                    this.coinflipWon = true
+                                    this.coinflipResultText.setText('VOLTEO GANADO! Puedes jugar...').setFill('#00ff88')
+                                } else {
+                                    this.coinflipWon = false
+                                    this.coinflipResultText.setText('VOLTEO PERDIDO! Te plantas automáticamente...').setFill('#ff4444')
+                                }
+
+                                this.time.delayedCall(1200, () => {
+                                    this.coinLabel.setVisible(false)
+                                    this.coinflipResultText.setVisible(false)
+                                    this.coin.setVisible(false)
+                                    this.coinText.setVisible(false)
+                                    this.btnCara.setVisible(false)
+                                    this.btnCreu.setVisible(false)
+                                    this.btnCaraText.setVisible(false)
+                                    this.btnCreuText.setVisible(false)
+                                    this.repartirMa()
+                                })
+                            }
+                        }
+                    })
+                }
+            })
+        }
+        gira()
     }
 
     repartirMa() {
+        this.btnCara.setVisible(false)
+        this.btnCreu.setVisible(false)
+        this.btnCaraText.setVisible(false)
+        this.btnCreuText.setVisible(false)
         this.monedes -= this.aposta
         this.monText.setText(`${Math.round(this.monedes)}$`)
         if (Math.round(this.monedes) < 0) {
@@ -384,6 +323,7 @@ export default class BlackjackScene extends Phaser.Scene {
             .filter(c => c.getData && c.getData('carta'))
             .forEach(c => c.destroy())
         this.dealerCard1 = null
+        this.autoStandResolved = false
 
         this.deck = this.buildDeck()
         this.drawDeckStack()
@@ -400,10 +340,16 @@ export default class BlackjackScene extends Phaser.Scene {
         this.jugadorText.setText(`Tu: ${this.valorJugador}`)
         this.dealerText.setText('Crupier: ?')
         this.resultText.setText('')
-        this.infoText.setText(`Mano ${this.mans + 1}/${this.maxMans}`)
-        this._mostrarBotonsCartes(true)
-        this.btnPedirCarta.setInteractive({ useHandCursor: true })
-        this.btnPlantar.setInteractive({ useHandCursor: true })
+        this.rondesText.setText(`Dia 10 — Ronda ${this.rondes + 1}/${this.maxRondes}`)
+        this.btnPedirCarta.setVisible(this.coinflipWon)
+        this.btnPlantar.setVisible(this.coinflipWon)
+        this.btnPedirCarta._btnText.setVisible(this.coinflipWon)
+        this.btnPlantar._btnText.setVisible(this.coinflipWon)
+        this.ruleText.setVisible(this.coinflipWon)
+        if (this.coinflipWon) {
+            this.btnPedirCarta.setInteractive({ useHandCursor: true })
+            this.btnPlantar.setInteractive({ useHandCursor: true })
+        }
 
         const { width, height } = this.scale
         const dealerY = 190
@@ -426,6 +372,15 @@ export default class BlackjackScene extends Phaser.Scene {
                 })
             }
         })
+
+        if (!this.coinflipWon) {
+            this.time.delayedCall(3000, () => {
+                if (!this.autoStandResolved) {
+                    this.autoStandResolved = true
+                    this.plantar()
+                }
+            })
+        }
     }
 
     pedirCarta() {
@@ -480,7 +435,7 @@ export default class BlackjackScene extends Phaser.Scene {
 
     dealerDraw() {
         this.valorCrupier = this.calcHand(this.cartesCrupier)
-        if (this.valorCrupier >= 16) {
+        if (this.valorCrupier >= 17) {
             this.resolveStanding()
             return
         }
@@ -505,7 +460,7 @@ export default class BlackjackScene extends Phaser.Scene {
         this.time.delayedCall(500, () => {
             if (this.valorCrupier > 21) {
                 this.time.delayedCall(300, () => this.acabarMa('win'))
-            } else if (this.valorCrupier >= 16) {
+            } else if (this.valorCrupier >= 17) {
                 this.resolveStanding()
             } else {
                 this.dealerDraw()
@@ -524,7 +479,7 @@ export default class BlackjackScene extends Phaser.Scene {
 
     acabarMa(result) {
         this._mostrarBotonsCartes(false)
-        this.mans++
+        this.rondes++
 
         if (result === 'push') {
             this.monedes += this.aposta
@@ -553,14 +508,131 @@ export default class BlackjackScene extends Phaser.Scene {
         }
         this.ajustarAposta()
 
-        if (this.mans >= this.maxMans) {
+        if (this.rondes >= this.maxRondes) {
             this.time.delayedCall(1500, () => this.mostrarResultats())
         } else {
-            this.time.delayedCall(1200, () => {
-                this.btnApostar.setVisible(true)
-                this.btnApostar._btnText.setVisible(true)
+            this.time.delayedCall(1800, () => {
+                this.rondesText.setText(`Dia 10 — Ronda ${this.rondes + 1}/${this.maxRondes}`)
+                this.coinflipWon = false
+                this.flipping = false
+                this.autoStandResolved = false
+                this.resultText.setText('')
+                this.coin.setVisible(true)
+                this.coin.setFillStyle(0xc9a227)
+                this.coinText.setText('?')
+                this.coinText.setVisible(true)
+                this.coinLabel.setVisible(true)
+                this.coinLabel.setText('VOLTEO')
+                this.coinflipResultText.setVisible(true)
+                this.coinflipResultText.setText('')
+                this.btnCara.setInteractive({ useHandCursor: true })
+                this.btnCreu.setInteractive({ useHandCursor: true })
+                this.btnCara.setVisible(true)
+                this.btnCreu.setVisible(true)
+                this.btnCaraText.setVisible(true)
+                this.btnCreuText.setVisible(true)
                 this._mostrarBotonsCartes(false)
             })
+        }
+    }
+
+    efecteJoker(jokerIdx, jokerImg) {
+        if (!this.dealerCard1 || !this.cartesCrupier[0] || !jokerImg) return
+        this.btnPedirCarta.disableInteractive()
+        this.btnPlantar.disableInteractive()
+
+        const tx = this.dealerCard1.x
+        const ty = this.dealerCard1.y
+
+        this.tweens.add({
+            targets: jokerImg,
+            x: tx, y: ty,
+            scaleX: 0.6, scaleY: 0.6,
+            duration: 600,
+            ease: 'Power2',
+            onComplete: () => {
+                this.dealerCard1.setTexture(this.cartesCrupier[0].img)
+                this.valorCrupier = this.calcHand(this.cartesCrupier)
+                this.dealerText.setText(`Crupier: ${this.valorCrupier}`)
+
+                this.tweens.add({
+                    targets: [this.dealerCard1, jokerImg],
+                    x: tx + 10, duration: 50, yoyo: true, repeat: 5,
+                    onComplete: () => {
+                        this.cartesJugador = this.cartesJugador.filter((_, i) => i !== jokerIdx)
+                        this.valorJugador = this.calcHand(this.cartesJugador)
+                        this.jugadorText.setText(`Tu: ${this.valorJugador}`)
+                        this.reposicionar()
+
+                        this.tweens.add({
+                            targets: jokerImg,
+                            y: -120, alpha: 0, duration: 400,
+                            onComplete: () => {
+                                jokerImg.destroy()
+                                if (!this.coinflipWon) {
+                                    this.autoStandResolved = true
+                                    this.time.delayedCall(400, () => this.plantar())
+                                } else {
+                                    this.btnPedirCarta.setInteractive({ useHandCursor: true })
+                                    this.btnPlantar.setInteractive({ useHandCursor: true })
+                                }
+                            }
+                        })
+
+                        this.time.delayedCall(1000, () => {
+                            if (this.valorJugador === 21) {
+                                if (!this.coinflipWon) this.autoStandResolved = true
+                                this.acabarMa('blackjack')
+                            }
+                        })
+                    }
+                })
+            }
+        })
+    }
+
+    getCardX(count, i) {
+        const totalW = (count - 1) * CARD_GAP
+        return this.scale.width / 2 - totalW / 2 + i * CARD_GAP
+    }
+
+    flyCardTo(key, tx, ty, dataTag) {
+        const img = this.add.image(this.deckX, this.deckY, key)
+            .setDisplaySize(CARD_W, CARD_H).setData('carta', true).setAlpha(0.6)
+        this.tweens.add({
+            targets: img, x: tx, y: ty, alpha: 1, duration: 250, ease: 'Power2'
+        })
+        if (dataTag === 'dealer1') this.dealerCard1 = img
+        if (dataTag) img.setData('tag', dataTag)
+        return img
+    }
+
+    drawDeckStack() {
+        this.children.list
+            .filter(c => c.getData && c.getData('deckStack'))
+            .forEach(c => c.destroy())
+        const n = Math.min(4, this.deck.length)
+        for (let i = 0; i < n; i++) {
+            this.add.image(this.deckX - i * 2, this.deckY - i * 2, 'cardBack')
+                .setDisplaySize(CARD_W, CARD_H).setData('deckStack', true).setDepth(0)
+        }
+    }
+
+    findPlayerImgs() {
+        const { height } = this.scale
+        const midY = height / 2
+        return this.children.list.filter(c =>
+            c.getData && c.getData('carta') && c.y > midY &&
+            c.texture && c.texture.key !== 'cardJoker'
+        ).sort((a, b) => a.x - b.x)
+    }
+
+    reposicionar() {
+        const imgs = this.findPlayerImgs()
+        const cards = this.cartesJugador.filter(c => c.rank !== '*')
+        for (let i = 0; i < Math.min(imgs.length, cards.length); i++) {
+            const tx = this.getCardX(cards.length, i)
+            this.tweens.add({ targets: imgs[i], x: tx, duration: 200, ease: 'Power2' })
         }
     }
 
@@ -573,6 +645,8 @@ export default class BlackjackScene extends Phaser.Scene {
         const { width, height } = this.scale
         this.btnPedirCarta.disableInteractive()
         this.btnPlantar.disableInteractive()
+        this.btnCara.disableInteractive()
+        this.btnCreu.disableInteractive()
         const bg = this.add.rectangle(width / 2, height / 2, width * 0.85, 160, 0x111122, 0.95)
             .setDepth(100).setStrokeStyle(2, 0xc9a227)
         const txt = this.perduaSeguro > 0
@@ -634,9 +708,9 @@ export default class BlackjackScene extends Phaser.Scene {
                 })
                 this.monedes += this.perduaSeguro
                 this.monText.setText(Math.round(this.monedes) + '$')
-                this.time.delayedCall(600, () => this.acabarJoc())
+                this.time.delayedCall(600, () => this.acabar())
             } else {
-                this.acabarJoc()
+                this.acabar()
             }
         })
     }
@@ -646,7 +720,7 @@ export default class BlackjackScene extends Phaser.Scene {
         const cx = width / 2, cy = height / 2
 
         const overlay = this.add.rectangle(cx, cy, width * 3, height * 3, 0x000000, 0.7).setDepth(50)
-        const bg = this.add.rectangle(cx, cy, 280, 180, 0x0d0a06, 0.95).setDepth(51).setStrokeStyle(2, 0x88ff88)
+        const bg = this.add.rectangle(cx, cy, 280, 210, 0x0d0a06, 0.95).setDepth(51).setStrokeStyle(2, 0x88ff88)
 
         const tancar = () => {
             overlay.destroy(); bg.destroy()
@@ -667,11 +741,11 @@ export default class BlackjackScene extends Phaser.Scene {
             return t
         }
 
-        addTxt(cx, cy - 50, 'TRUCOS BLACKJACK', '15px', '#88ff88')
+        addTxt(cx, cy - 80, 'TRUCOS BOSS BLACKJACK', '15px', '#88ff88')
 
         const bjKey = 'cheat_blackjack'
         const bjEst = localStorage.getItem(bjKey)
-        const bjTxt = addBtn(cx, cy - 10, '21 forzado: ' + (bjEst ? 'SÍ' : 'NO'), () => {
+        const bjTxt = addBtn(cx, cy - 35, '21 forzado: ' + (bjEst ? 'SÍ' : 'NO'), () => {
             if (localStorage.getItem(bjKey)) {
                 localStorage.removeItem(bjKey)
                 bjTxt.setText('21 forzado: NO')
@@ -683,7 +757,7 @@ export default class BlackjackScene extends Phaser.Scene {
 
         const jkKey = 'cheat_blackjack_joker'
         const jkEst = localStorage.getItem(jkKey)
-        const jkTxt = addBtn(cx, cy + 15, 'Forzar Joker: ' + (jkEst ? 'SÍ' : 'NO'), () => {
+        const jkTxt = addBtn(cx, cy - 10, 'Forzar Joker: ' + (jkEst ? 'SÍ' : 'NO'), () => {
             if (localStorage.getItem(jkKey)) {
                 localStorage.removeItem(jkKey)
                 jkTxt.setText('Forzar Joker: NO')
@@ -693,10 +767,20 @@ export default class BlackjackScene extends Phaser.Scene {
             }
         })
 
-        addBtn(cx, cy + 50, 'CERRAR', tancar)
+        const mKey = 'cheat_moneda'
+        const opcs = ['', 'cara', 'creu']
+        const labels = { '': '---', 'cara': 'CARA', 'creu': 'CRUZ' }
+        let idx = opcs.indexOf(localStorage.getItem(mKey) || '')
+        const monTxt = addBtn(cx, cy + 15, 'Volteo: ' + labels[opcs[idx] || ''], () => {
+            idx = (idx + 1) % opcs.length
+            localStorage.setItem(mKey, opcs[idx])
+            monTxt.setText('Volteo: ' + labels[opcs[idx]])
+        })
+
+        addBtn(cx, cy + 55, 'CERRAR', tancar)
     }
 
-    acabarJoc() {
+    acabar() {
         this.scene.start('RecinteScene', {
             nickname: this.nickname,
             monedes: Math.round(this.monedes),
@@ -706,5 +790,66 @@ export default class BlackjackScene extends Phaser.Scene {
             inventari: this.inventari,
             capsulaPreu: this.capsulaPreu
         })
+    }
+
+    dibuixarEquipats() {
+        const items = (this.equipats || []).filter(Boolean)
+        if (items.length === 0) return
+        const startX = 90
+        const y = 118
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i]
+            const x = startX + i * 90
+            const cor = item.raresa === 'legendari' ? '#ff8800'
+                : item.raresa === 'epic' ? '#cc44ff'
+                : item.raresa === 'raro' ? '#44aaff' : '#c9a227'
+            const t = this.add.text(x, y, item.nomItem || item.nom || '?', {
+                fontSize: '11px', fill: cor, fontFamily: 'serif',
+                backgroundColor: '#1a120888', padding: { x: 6, y: 3 }
+            }).setOrigin(0.5).setInteractive({ useHandCursor: true })
+            let tip = null
+            t.on('pointerover', () => {
+                tip = this.add.text(x, y + 20, this.descEfecte(item), {
+                    fontSize: '10px', fill: '#e8d5a3', fontFamily: 'serif',
+                    backgroundColor: '#0d0a0688', padding: { x: 6, y: 4 },
+                    stroke: '#000', strokeThickness: 2
+                }).setOrigin(0.5).setDepth(40)
+            })
+            t.on('pointerout', () => { if (tip) { tip.destroy(); tip = null } })
+        }
+    }
+
+    descEfecte(item) {
+        const ef = item.efecte
+        if (!ef) return 'Sense efecte'
+        const m = {
+            bonus_guany: `+${Math.round(ef.valor * 100)}% guanys`,
+            reduccio_perdua: `-${Math.round(ef.valor * 100)}% perdues`,
+            prob_guany_ruleta: `+${Math.round(ef.valor * 100)}% prob ruleta`,
+            prob_jackpot_slots: `+${Math.round(ef.valor * 100)}% jackpot`,
+            prob_guany_moneda: `+${Math.round(ef.valor * 100)}% prob moneda`,
+            prob_joker: `+${Math.round(ef.valor * 100)}% prob comodin`,
+            as_seguro: 'As=11 sempre',
+            carta_extra: '+1 carta max',
+            ronda_extra: '+1 ronda',
+            monedes_extra: `+${ef.valor}$ inici`,
+            revelar_crupier: 'Revela carta',
+            anular_perdua: 'Anula 1 perdua',
+            doble_aposta: 'Duplica aposta',
+        }
+        return `${item.raresa || '?'}: ${m[ef.tipus] || ef.tipus}`
+    }
+
+    afegirVinyeta(w, h) {
+        const rt = this.add.renderTexture(0, 0, w, h).setDepth(1)
+        rt.fill(0x000000, 0.55)
+        const circ = this.make.graphics({ add: false })
+        circ.fillStyle(0xffffff)
+        circ.fillCircle(0, 0, 260)
+        circ.generateTexture('spot_bossbj', 520, 520)
+        circ.destroy()
+        const eraser = this.add.image(w / 2, h / 2 - 40, 'spot_bossbj').setVisible(false)
+        rt.erase(eraser, w / 2, h / 2 - 40)
+        eraser.destroy()
     }
 }

@@ -6,6 +6,7 @@ const JOCS = [
     { nom: 'Slots', escena: 'SlotsScene', color: 0x1a0d3d },
     { nom: 'Cara o Creu', escena: 'MonedaScene', color: 0x3d3d06 },
     { nom: 'Daus (Boss)', escena: 'DausScene', color: 0x3d0606 },
+    { nom: 'Blackjack (Boss)', escena: 'BossBlackjackScene', color: 0x3d0606 },
 ]
 
 export default class CasinoScene extends Phaser.Scene {
@@ -43,10 +44,22 @@ export default class CasinoScene extends Phaser.Scene {
             fontSize: '16px', fill: '#ffd700', fontFamily: 'serif'
         }).setOrigin(1, 0)
 
-        // Triar joc (forçat per cheat, dia 5=boss, o aleatori)
+        // Triar joc (forçat per cheat, dia 5/10=boss, o aleatori)
         let joc
         if (this.dia === 5) {
             this.scene.start('DausScene', {
+                nickname: this.nickname,
+                monedes: this.monedes,
+                dia: this.dia,
+                millores: this.millores,
+                equipats: this.equipats,
+                inventari: this.inventari,
+                capsulaPreu: this.capsulaPreu
+            })
+            return
+        }
+        if (this.dia === 10) {
+            this.scene.start('BossBlackjackScene', {
                 nickname: this.nickname,
                 monedes: this.monedes,
                 dia: this.dia,
@@ -62,11 +75,11 @@ export default class CasinoScene extends Phaser.Scene {
             joc = JOCS.find(j => j.escena === forcjat)
         }
         if (!joc) {
-            joc = Phaser.Utils.Array.GetRandom(JOCS.filter(j => j.escena !== 'DausScene'))
+            joc = Phaser.Utils.Array.GetRandom(JOCS.filter(j => j.escena !== 'DausScene' && j.escena !== 'BossBlackjackScene'))
         }
 
         this.time.delayedCall(600, () => {
-            info.setText(`Avui toca... ${joc.nom}!`)
+                info.setText(`Hoy toca... ${joc.nom}!`)
             this.cameras.main.shake(300, 0.01)
         })
 

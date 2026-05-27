@@ -57,7 +57,7 @@ export default class RuletaScene extends Phaser.Scene {
         }).setOrigin(0.5)
 
         // Botons apostar
-        this.add.text(width/2, height/2 + 145, 'Aposta a:', {
+        this.add.text(width/2, height/2 + 145, 'Apuesta a:', {
             fontSize: '13px', fill: '#e8d5a3', fontFamily: 'serif'
         }).setOrigin(0.5)
 
@@ -65,14 +65,14 @@ export default class RuletaScene extends Phaser.Scene {
         this.btnBlack = this.addColorBtn(width/2, height/2 + 175, 'NEGRE x2', 0x222222, 'black')
         this.btnGreen = this.addColorBtn(width/2 + 120, height/2 + 175, 'VERD x14', 0x006400, 'green')
 
-        this.colorText = this.add.text(width/2, height/2 + 210, 'Tria un color', {
+        this.colorText = this.add.text(width/2, height/2 + 210, 'Elige un color', {
             fontSize: '12px', fill: '#a08c5a', fontFamily: 'serif'
         }).setOrigin(0.5)
 
         // Selector d'aposta vertical (dreta)
         const selX = width - 85
         const selY = height / 2
-        this.add.text(selX, selY - 90, 'APOSTA', {
+        this.add.text(selX, selY - 90, 'APUESTA', {
             fontSize: '12px', fill: '#a08c5a', fontFamily: 'serif'
         }).setOrigin(0.5)
 
@@ -94,7 +94,7 @@ export default class RuletaScene extends Phaser.Scene {
             padding: { x: 14, y: 6 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true })
         this.betAmountText.on('pointerdown', () => {
-            const v = window.prompt('Aposta (min ' + this.minBet() + '$, max ' + this.monedes + '$):', '' + this.aposta)
+            const v = window.prompt('Apuesta (min ' + this.minBet() + '$, max ' + this.monedes + '$):', '' + this.aposta)
             if (v !== null) this.establirAposta(parseInt(v, 10))
         })
         apBtn(selY + 35, '\u25BC -5', () => this.canviarAposta(-5))
@@ -112,7 +112,7 @@ export default class RuletaScene extends Phaser.Scene {
         this.btnGirar.on('pointerout', () => this.btnGirar.setStrokeStyle(2, 0xc9a227))
 
         // Botó sortir
-        const btnSortir = this.add.text(16, height - 30, '← Sortir', {
+        const btnSortir = this.add.text(16, height - 30, '← Salir', {
             fontSize: '13px', fill: '#a08c5a', fontFamily: 'serif'
         }).setInteractive({ useHandCursor: true })
         btnSortir.on('pointerover', () => btnSortir.setFill('#c9a227'))
@@ -161,11 +161,11 @@ export default class RuletaScene extends Phaser.Scene {
             return t
         }
 
-        addTxt(cx, cy - 50, 'TRUCS RULETA', '15px', '#88ff88')
+        addTxt(cx, cy - 50, 'TRUCOS RULETA', '15px', '#88ff88')
 
         const rKey = 'cheat_ruleta'
         const opcs = ['', 'red', 'black', 'green']
-        const labels = { '': '---', 'red': 'RED', 'black': 'BLACK', 'green': 'GREEN' }
+        const labels = { '': '---', 'red': 'ROJO', 'black': 'NEGRO', 'green': 'VERDE' }
         let idx = opcs.indexOf(localStorage.getItem(rKey) || '')
         const ruTxt = addBtn(cx, cy - 10, 'Color: ' + labels[opcs[idx] || ''], () => {
             idx = (idx + 1) % opcs.length
@@ -173,7 +173,7 @@ export default class RuletaScene extends Phaser.Scene {
             ruTxt.setText('Color: ' + labels[opcs[idx]])
         })
 
-        addBtn(cx, cy + 30, 'TANCAR', tancar)
+        addBtn(cx, cy + 30, 'CERRAR', tancar)
     }
 
     afegirVinyeta(w, h) {
@@ -326,6 +326,8 @@ export default class RuletaScene extends Phaser.Scene {
             fontSize: '14px', fill: '#ffffff', fontFamily: 'serif'
         }).setOrigin(0.5)
 
+        btn._btnText = label
+
         btn.on('pointerover', () => {
             if (this.apostaColor !== apostaColor) btn.setStrokeStyle(2, 0xffd700)
         })
@@ -334,7 +336,7 @@ export default class RuletaScene extends Phaser.Scene {
         })
         btn.on('pointerdown', () => {
             this.apostaColor = apostaColor
-            this.colorText.setText(`Aposta seleccionada: ${text}`)
+            this.colorText.setText(`Apuesta seleccionada: ${text}`)
             this.btnRed.setStrokeStyle(this.apostaColor === 'red' ? 3 : 1, this.apostaColor === 'red' ? 0xffd700 : 0x888888)
             this.btnBlack.setStrokeStyle(this.apostaColor === 'black' ? 3 : 1, this.apostaColor === 'black' ? 0xffd700 : 0x888888)
             this.btnGreen.setStrokeStyle(this.apostaColor === 'green' ? 3 : 1, this.apostaColor === 'green' ? 0xffd700 : 0x888888)
@@ -353,14 +355,14 @@ export default class RuletaScene extends Phaser.Scene {
             guanyancia = color === 'green' ? this.aposta * 14 : this.aposta
             this.monedes += guanyancia
             this.guanyBrut += guanyancia
-            this.resultText.setText('GUANYES +' + guanyancia + '$!').setFill('#00ff88')
+            this.resultText.setText('GANAS +' + guanyancia + '$!').setFill('#00ff88')
         } else {
             const perdua = this.aposta
             const seguro = this.getSeguroRate()
             this.monedes -= perdua
             this.perduaBruta += perdua
             this.perduaSeguro += Math.round(perdua * seguro)
-            this.resultText.setText('PERDS -' + perdua + '$').setFill('#ff4444')
+            this.resultText.setText('PIERDES -' + perdua + '$').setFill('#ff4444')
         }
 
         this.monText.setText(Math.round(this.monedes) + '$')
@@ -427,13 +429,13 @@ export default class RuletaScene extends Phaser.Scene {
             .setDepth(100).setStrokeStyle(2, 0xc9a227)
 
         const lines = [
-            'RESULTATS DE LA PARTIDA',
+            'RESULTADOS DE LA PARTIDA',
             '',
-            'Guany brut:        +' + this.guanyBrut + '$',
-            'Perdua bruta:      -' + this.perduaBruta + '$',
+            'Ganancia bruta:   +' + this.guanyBrut + '$',
+            'Pérdida bruta:     -' + this.perduaBruta + '$',
             this.perduaSeguro > 0 ? 'Cobertura seguro:   +' + this.perduaSeguro + '$' : '',
             '',
-            'NET: ' + (net >= 0 ? '+' : '') + net + '$'
+            'NETO: ' + (net >= 0 ? '+' : '') + net + '$'
         ]
         const text = this.add.text(width / 2, height / 2 - 80, lines.join('\n'), {
             fontSize: '14px', fill: '#e8d5a3', fontFamily: 'serif',

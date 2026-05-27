@@ -56,7 +56,7 @@ export default function Hangar({ setJugador, onReady }) {
                     <div className="mb-4">
                         <input
                             className="form-control mb-2 text-center"
-                            placeholder="Nom del presoner"
+                            placeholder="Nombre del prisionero"
                             value={nickname}
                             onChange={e => { setNickname(e.target.value); setError('') }}
                         />
@@ -70,7 +70,7 @@ export default function Hangar({ setJugador, onReady }) {
                         </button>
                     </div>
                 ) : (
-                    <p className="text-muted small">Carregant perfil...</p>
+                    <p className="text-muted small">Cargando perfil...</p>
                 )}
 
                 <Leaderboard />

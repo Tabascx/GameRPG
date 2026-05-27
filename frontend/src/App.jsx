@@ -17,7 +17,7 @@ function App() {
 
     return (
         <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }}>
-            <Suspense fallback={<div className="text-center text-light mt-4">Carregant...</div>}>
+            <Suspense fallback={<div className="text-center text-light mt-4">Cargando...</div>}>
                 {page === 'auth' ? (
                     <Auth onAuth={onAuth} />
                 ) : (

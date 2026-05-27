@@ -59,17 +59,17 @@ export default function Auth({ onAuth }) {
                     IRON GATE
                 </h1>
                 <p className="mb-4" style={{ color: '#a08c5a', fontStyle: 'italic' }}>
-                    {mode === 'login' ? 'Inicia sessio' : 'Crea el teu compte'}
+                    {mode === 'login' ? 'Inicia sesión' : 'Crea tu cuenta'}
                 </p>
 
                 <div className="mb-3">
                     {mode === 'register' && (
-                        <input className="form-control mb-2 text-center" placeholder="Nickname"
+                        <input className="form-control mb-2 text-center" placeholder="Apodo"
                             value={nickname} onChange={e => setNickname(e.target.value)} />
                     )}
-                    <input className="form-control mb-2 text-center" placeholder="Email"
+                    <input className="form-control mb-2 text-center" placeholder="Correo"
                         value={email} onChange={e => setEmail(e.target.value)} type="email" />
-                    <input className="form-control mb-2 text-center" placeholder="Contrasenya"
+                    <input className="form-control mb-2 text-center" placeholder="Contraseña"
                         value={password} onChange={e => setPassword(e.target.value)} type="password" />
                     {error && <p className="text-danger small">{error}</p>}
                     <button className="btn btn-warning w-100" onClick={submit}>
@@ -79,7 +79,7 @@ export default function Auth({ onAuth }) {
 
                 <p className="small" style={{ color: '#a08c5a', cursor: 'pointer' }}
                     onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}>
-                    {mode === 'login' ? 'No tens compte? Registra\'t' : 'Ja tens compte? Inicia sessio'}
+                    {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
                 </p>
 
                 <Leaderboard />

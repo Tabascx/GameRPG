@@ -59,13 +59,13 @@ export default class SlotsScene extends Phaser.Scene {
             .setDepth(100).setStrokeStyle(2, 0xc9a227)
 
         const lines = [
-            'RESULTATS DE LA PARTIDA',
+            'RESULTADOS DE LA PARTIDA',
             '',
-            'Guany brut:        +' + this.guanyBrut + '$',
-            'Perdua bruta:      -' + this.perduaBruta + '$',
+            'Ganancia bruta:   +' + this.guanyBrut + '$',
+            'Pérdida bruta:     -' + this.perduaBruta + '$',
             this.perduaSeguro > 0 ? 'Cobertura seguro:   +' + this.perduaSeguro + '$' : '',
             '',
-            'NET: ' + (net >= 0 ? '+' : '') + net + '$'
+            'NETO: ' + (net >= 0 ? '+' : '') + net + '$'
         ]
         const text = this.add.text(width / 2, height / 2 - 80, lines.join('\n'), {
             fontSize: '14px', fill: '#e8d5a3', fontFamily: 'serif',
@@ -210,7 +210,7 @@ export default class SlotsScene extends Phaser.Scene {
         })
 
         // Botó sortir
-        const btnSortir = this.add.text(16, height - 30, '<- Sortir', {
+        const btnSortir = this.add.text(16, height - 30, '<- Salir', {
             fontSize: '13px', fill: '#a08c5a', fontFamily: 'serif'
         }).setInteractive({ useHandCursor: true })
         btnSortir.on('pointerover', () => btnSortir.setFill('#c9a227'))
@@ -255,21 +255,21 @@ export default class SlotsScene extends Phaser.Scene {
             return t
         }
 
-        addTxt(cx, cy - 50, 'TRUCS SLOTS', '15px', '#88ff88')
+        addTxt(cx, cy - 50, 'TRUCOS SLOTS', '15px', '#88ff88')
 
         const sKey = 'cheat_slots'
         const sEst = localStorage.getItem(sKey)
-        const sTxt = addBtn(cx, cy - 10, 'Jackpot: ' + (sEst ? 'ON' : 'OFF'), () => {
+        const sTxt = addBtn(cx, cy - 10, 'Jackpot: ' + (sEst ? 'SÍ' : 'NO'), () => {
             if (localStorage.getItem(sKey)) {
                 localStorage.removeItem(sKey)
-                sTxt.setText('Jackpot: OFF')
+                sTxt.setText('Jackpot: NO')
             } else {
                 localStorage.setItem(sKey, '1')
-                sTxt.setText('Jackpot: ON')
+                sTxt.setText('Jackpot: SÍ')
             }
         })
 
-        addBtn(cx, cy + 30, 'TANCAR', tancar)
+        addBtn(cx, cy + 30, 'CERRAR', tancar)
     }
 
     dibuixarEquipats() {
@@ -399,13 +399,13 @@ export default class SlotsScene extends Phaser.Scene {
             this.resultText.setFill('#ffd700')
         } else if (s1 === s2 || s2 === s3 || s1 === s3) {
             guanyancia = this.aposta * 2
-            missatge = 'DOS IGUALS! +' + guanyancia + '$'
+            missatge = 'DOS IGUALES! +' + guanyancia + '$'
             this.resultText.setFill('#00ff88')
         } else {
             const perdua = this.aposta
             const seguro = this.getSeguroRate()
             guanyancia = 0
-            missatge = 'PERDS -' + perdua + '$'
+            missatge = 'PIERDES -' + perdua + '$'
             this.monedes -= perdua
             this.perduaBruta += perdua
             this.perduaSeguro += Math.round(perdua * seguro)

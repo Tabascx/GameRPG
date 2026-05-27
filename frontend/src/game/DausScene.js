@@ -32,12 +32,12 @@ export default class DausScene extends Phaser.Scene {
         this.apostaPar = false
         this.apostaMajor = false
 
-        this.add.text(width / 2, 30, 'DAUS DEL BOSS', {
+        this.add.text(width / 2, 30, 'DADOS DEL BOSS', {
             fontSize: '34px', fill: '#ff4444', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 5
         }).setOrigin(0.5)
 
-        this.add.text(width / 2, 72, 'Dia 5 — Ronda Unica', {
+        this.add.text(width / 2, 72, 'Día 5 — Ronda Única', {
             fontSize: '16px', fill: '#e8d5a3', fontFamily: 'serif'
         }).setOrigin(0.5)
 
@@ -51,19 +51,19 @@ export default class DausScene extends Phaser.Scene {
 
         // Selectors
         const selY = height / 2 + 40
-        this.add.text(width / 2, selY - 20, 'Aposta:', {
+        this.add.text(width / 2, selY - 20, 'Apuesta:', {
             fontSize: '15px', fill: '#c9a227', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5)
 
-        this.btnPar = this.add.text(width / 2 - 90, selY + 10, 'PARELL', {
+        this.btnPar = this.add.text(width / 2 - 90, selY + 10, 'PAR', {
             fontSize: '20px', fill: '#888', fontFamily: 'serif',
             backgroundColor: '#1a120888', padding: { x: 14, y: 6 },
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5).setInteractive({ useHandCursor: true })
         this.btnPar.on('pointerdown', () => this.togglePar())
 
-        this.btnImpar = this.add.text(width / 2 + 90, selY + 10, 'SENAR', {
+        this.btnImpar = this.add.text(width / 2 + 90, selY + 10, 'IMPAR', {
             fontSize: '20px', fill: '#888', fontFamily: 'serif',
             backgroundColor: '#1a120888', padding: { x: 14, y: 6 },
             stroke: '#000', strokeThickness: 2
@@ -84,7 +84,7 @@ export default class DausScene extends Phaser.Scene {
         }).setOrigin(0.5).setInteractive({ useHandCursor: true })
         this.btnMenor.on('pointerdown', () => this.toggleMenor())
 
-        this.betInfo = this.add.text(width / 2, selY + 100, `Aposta total: ${this.apostaBase}$`, {
+        this.betInfo = this.add.text(width / 2, selY + 100, `Apuesta total: ${this.apostaBase}$`, {
             fontSize: '16px', fill: '#ffd700', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5)
@@ -96,7 +96,7 @@ export default class DausScene extends Phaser.Scene {
 
         this.btnTirar = this.add.rectangle(width / 2, height - 35, 200, 48, 0x3d1a06)
             .setInteractive({ useHandCursor: true }).setStrokeStyle(2, 0xc9a227)
-        this.btnTirarText = this.add.text(width / 2, height - 35, 'TIRAR DAUS', {
+        this.btnTirarText = this.add.text(width / 2, height - 35, 'TIRAR DADOS', {
             fontSize: '18px', fill: '#c9a227', fontFamily: 'serif'
         }).setOrigin(0.5)
         this.btnTirar.on('pointerdown', () => this.tirar())
@@ -146,11 +146,11 @@ export default class DausScene extends Phaser.Scene {
         if (this.apostaPar) parts++
         if (this.apostaMajor) parts++
         if (parts === 0) {
-            this.betInfo.setText(`Aposta total: 0$`)
+            this.betInfo.setText(`Apuesta total: 0$`)
             return
         }
         const perPart = Math.floor(this.apostaBase / parts)
-        this.betInfo.setText(`Aposta: ${perPart}$ x${parts}  (total ${perPart * parts}$)`)
+        this.betInfo.setText(`Apuesta: ${perPart}$ x${parts}  (total ${perPart * parts}$)`)
     }
 
     tirar() {
@@ -235,13 +235,13 @@ export default class DausScene extends Phaser.Scene {
         }
 
         const missatge = []
-        if (this.apostaPar) missatge.push(this.apostaPar === 'par' ? (esPar ? 'Parell +' + (perPart*2) + '$' : 'Parell PERDUT') : (!esPar ? 'Senar +' + (perPart*2) + '$' : 'Senar PERDUT'))
+        if (this.apostaPar) missatge.push(this.apostaPar === 'par' ? (esPar ? 'Par +' + (perPart*2) + '$' : 'Par PERDIDO') : (!esPar ? 'Impar +' + (perPart*2) + '$' : 'Impar PERDIDO'))
         if (this.apostaMajor) {
-            const r = suma === 7 ? '7=PERDUT' : this.apostaMajor === 'major' ? (suma > 7 ? '>7 +' + (perPart*2) + '$' : '>7 PERDUT') : (suma < 7 ? '<7 +' + (perPart*2) + '$' : '<7 PERDUT')
+            const r = suma === 7 ? '7=PERDIDO' : this.apostaMajor === 'major' ? (suma > 7 ? '>7 +' + (perPart*2) + '$' : '>7 PERDIDO') : (suma < 7 ? '<7 +' + (perPart*2) + '$' : '<7 PERDIDO')
             missatge.push(r)
         }
 
-        this.resultText.setText(`Daus: ${d1}+${d2}=${suma}\n${missatge.join(' | ')}`).setFill(guany > perd ? '#00ff88' : perd > guany ? '#ff4444' : '#c9a227')
+        this.resultText.setText(`Dados: ${d1}+${d2}=${suma}\n${missatge.join(' | ')}`).setFill(guany > perd ? '#00ff88' : perd > guany ? '#ff4444' : '#c9a227')
 
         this.monText.setText(`${Math.round(this.monedes)}$`)
         if (Math.round(this.monedes) <= 0) {
@@ -288,13 +288,13 @@ export default class DausScene extends Phaser.Scene {
             .setDepth(100).setStrokeStyle(2, 0xc9a227)
 
         const lines = [
-            'RESULTATS',
+            'RESULTADOS',
             '',
-            'Guany brut:        +' + this.guanyBrut + '$',
-            'Perdua bruta:      -' + this.perduaBruta + '$',
+            'Ganancia bruta:   +' + this.guanyBrut + '$',
+            'Pérdida bruta:     -' + this.perduaBruta + '$',
             this.perduaSeguro > 0 ? 'Cobertura seguro:   +' + this.perduaSeguro + '$' : '',
             '',
-            'NET: ' + (net >= 0 ? '+' : '') + net + '$'
+            'NETO: ' + (net >= 0 ? '+' : '') + net + '$'
         ]
         const text = this.add.text(width / 2, height / 2 - 80, lines.join('\n'), {
             fontSize: '14px', fill: '#e8d5a3', fontFamily: 'serif',
@@ -366,20 +366,20 @@ export default class DausScene extends Phaser.Scene {
             return t
         }
 
-        addTxt(cx, cy - 40, 'TRUCS DAUS', '15px', '#88ff88')
+        addTxt(cx, cy - 40, 'TRUCOS DADOS', '15px', '#88ff88')
 
         const dKey = 'cheat_daus'
         const dEst = localStorage.getItem(dKey)
-        const dTxt = addBtn(cx, cy, 'Forcar daus: ' + (dEst || '---'), () => {
+        const dTxt = addBtn(cx, cy, 'Forzar dados: ' + (dEst || '---'), () => {
             const opcs = ['', '2', '7', '12']
             const idx = (opcs.indexOf(localStorage.getItem(dKey) || '') + 1) % opcs.length
             const v = opcs[idx]
             if (v) localStorage.setItem(dKey, v)
             else localStorage.removeItem(dKey)
-            dTxt.setText('Forcar daus: ' + (v || '---'))
+            dTxt.setText('Forzar dados: ' + (v || '---'))
         })
 
-        addBtn(cx, cy + 30, 'TANCAR', tancar)
+        addBtn(cx, cy + 30, 'CERRAR', tancar)
     }
 
     dibuixarEquipats() {
