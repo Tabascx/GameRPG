@@ -32,12 +32,12 @@ export default class DausScene extends Phaser.Scene {
         this.apostaPar = false
         this.apostaMajor = false
 
-        this.add.text(width / 2, 30, 'DADOS DEL BOSS', {
+        this.add.text(width / 2, 30, 'ALTO RIESGO: DADOS', {
             fontSize: '34px', fill: '#ff4444', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 5
         }).setOrigin(0.5)
 
-        this.add.text(width / 2, 72, 'Día 5 — Ronda Única', {
+        this.add.text(width / 2, 72, 'Día 5 — Alto Riesgo', {
             fontSize: '16px', fill: '#e8d5a3', fontFamily: 'serif'
         }).setOrigin(0.5)
 
@@ -154,6 +154,7 @@ export default class DausScene extends Phaser.Scene {
     }
 
     tirar() {
+        this.sound.play('snd_dice')
         let parts = 0
         if (this.apostaPar) parts++
         if (this.apostaMajor) parts++

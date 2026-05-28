@@ -11,6 +11,7 @@ import SlotsScene from '../game/SlotsScene'
 import MonedaScene from '../game/MonedaScene'
 import DausScene from '../game/DausScene'
 import BossBlackjackScene from '../game/BossBlackjackScene'
+import BossFinalScene from '../game/BossFinalScene'
 
 export default function Battle({ jugadorId }) {
     const gameRef = useRef(null)
@@ -103,6 +104,7 @@ export default function Battle({ jugadorId }) {
         game.scene.add('MonedaScene', MonedaScene, false)
         game.scene.add('DausScene', DausScene, false)
         game.scene.add('BossBlackjackScene', BossBlackjackScene, false)
+        game.scene.add('BossFinalScene', BossFinalScene, false)
 
         gameRef.current = game
 

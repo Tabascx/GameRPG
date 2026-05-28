@@ -414,12 +414,14 @@ export default class BlackjackScene extends Phaser.Scene {
         })
         this.time.delayedCall(400, () => {
             this.flyCardTo(this.cartesCrupier[1].img, this.getCardX(2, 1), dealerY)
+            this.sound.play('snd_npc')
         })
         this.time.delayedCall(600, () => {
             for (let i = 0; i < this.cartesJugador.length; i++) {
                 this.time.delayedCall(i * 200, () => {
                     const img = this.flyCardTo(this.cartesJugador[i].img,
                         this.getCardX(this.cartesJugador.length, i), jugadorY)
+                    this.sound.play('snd_player')
                     if (this.cartesJugador[i].rank === '*') {
                         this.time.delayedCall(300, () => this.efecteJoker(i, img))
                     }
@@ -441,6 +443,7 @@ export default class BlackjackScene extends Phaser.Scene {
         const i = this.cartesJugador.length - 1
         const tx = this.getCardX(this.cartesJugador.length, i)
         const img = this.flyCardTo(nova.img, tx, jugadorY)
+        this.sound.play('snd_player')
 
         if (nova.rank === '*') {
             this.time.delayedCall(400, () => this.efecteJoker(i, img))
@@ -501,6 +504,7 @@ export default class BlackjackScene extends Phaser.Scene {
         const i = this.cartesCrupier.length - 1
         const tx = this.getCardX(this.cartesCrupier.length, i)
         this.flyCardTo(nova.img, tx, dealerY)
+        this.sound.play('snd_npc')
 
         this.time.delayedCall(500, () => {
             if (this.valorCrupier > 21) {

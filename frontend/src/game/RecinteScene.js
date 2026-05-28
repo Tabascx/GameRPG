@@ -43,25 +43,36 @@ export default class RecinteScene extends Phaser.Scene {
         this.walls.add(this.add.zone(wx2, wy1 + wallH / 2, thick, wallH))
 
         // ── JUGADOR ──
-        this.player = this.add.sprite(835, 780, 'player_0')
+        this.player = this.add.sprite(835, 780, 'idleSheet', 0)
         this.player.setDepth(15).setScale(2)
 
-        if (!this.anims.exists('player_walk')) {
-            this.anims.create({
-                key: 'player_walk',
-                frames: [
-                    { key: 'player_0' },
-                    { key: 'player_1' },
-                    { key: 'player_2' },
-                ],
-                frameRate: 7,
-                repeat: -1
-            })
+        const DIRS = [
+            { name: 'down', start: 0 },
+            { name: 'downRight', start: 4 },
+            { name: 'right', start: 8 },
+            { name: 'upRight', start: 12 },
+            { name: 'up', start: 16 },
+        ]
+
+        for (const d of DIRS) {
+            const idleKey = `idle_${d.name}`
+            const walkKey = `walk_${d.name}`
+            const idleFrames = Array.from({ length: 4 }, (_, i) => ({ key: 'idleSheet', frame: d.start + i }))
+            const walkFrames = Array.from({ length: 4 }, (_, i) => ({ key: 'walkSheet', frame: d.start + i }))
+
+            if (!this.anims.exists(idleKey)) {
+                this.anims.create({ key: idleKey, frames: idleFrames, frameRate: 4, repeat: -1 })
+            }
+            if (!this.anims.exists(walkKey)) {
+                this.anims.create({ key: walkKey, frames: walkFrames, frameRate: 7, repeat: -1 })
+            }
         }
 
+        this._playerDir = 'down'
+
         this.physics.add.existing(this.player)
-        this.player.body.setSize(14, 14)
-        this.player.body.setOffset(9, 17)
+        this.player.body.setSize(14, 26)
+        this.player.body.setOffset(9, 3)
         this.player.body.setCollideWorldBounds(true)
 
         this.physics.add.collider(this.player, this.walls)
@@ -94,6 +105,7 @@ export default class RecinteScene extends Phaser.Scene {
         this.activeZone = null
         this.menuOpen = false
         this._menuTipus = null
+        this._tancarMenu = () => {}
 
         // Auto-carregar partida guardada si existeix
         const uid = localStorage.getItem('uid') || 'anonim'
@@ -132,6 +144,7 @@ export default class RecinteScene extends Phaser.Scene {
     }
 
     fitCamera() {
+        if (!this.cameras?.main) return
         const { width, height } = this.scale
         const worldW = 1672
         const worldH = 941
@@ -159,12 +172,21 @@ export default class RecinteScene extends Phaser.Scene {
             : (this.wasd.S.isDown || this.cursors.down.isDown) ? 1 : 0
         this.player.body.setVelocity(vx * 160, vy * 160)
 
-        const moving = vx !== 0 || vy !== 0
-        if (moving && !this.player.anims.isPlaying) {
-            this.player.play('player_walk')
-        } else if (!moving && this.player.anims.isPlaying) {
-            this.player.stop()
-            this.player.setTexture('player_0')
+        let dir
+        if (vy > 0) {
+            dir = vx !== 0 ? 'downRight' : 'down'
+        } else if (vy < 0) {
+            dir = vx !== 0 ? 'upRight' : 'up'
+        } else {
+            dir = vx !== 0 ? 'right' : this._playerDir
+        }
+
+        if (vx !== 0 || vy !== 0) {
+            this._playerDir = dir
+            this.player.setFlipX(vx < 0)
+            this.player.play(`walk_${dir}`, true)
+        } else {
+            this.player.play(`idle_${this._playerDir}`, true)
         }
 
         // PROXIMITAT
@@ -406,111 +428,22 @@ export default class RecinteScene extends Phaser.Scene {
             renderShop()
 
         } else {
-            const renderOnce = () => {
-                for (let i = menuItems.length - 1; i >= 0; i--) {
-                    const c = menuItems[i]
-                    if (c !== overlay && c !== bg && c !== closeBtn) {
-                        menuItems.splice(i, 1)
-                        c.destroy()
-                    }
-                }
+            addItem(this.add.text(cx, cy - 30, `${zone.label}`, {
+                fontSize: '20px', fill: '#c9a227', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 2
+            }).setOrigin(0.5).setDepth(52))
 
-                const preu = Math.min(this.capsulaPreu, 300)
-                const txt = (x, y, s, c, o) => addItem(this.add.text(x, y, s,
-                    { fontSize: o?.size || '13px', fill: c || '#e8d5a3', fontFamily: 'serif',
-                      stroke: '#000', strokeThickness: 2 }).setOrigin(o?.ox ?? 0, o?.oy ?? 0.5).setDepth(52))
+            addItem(this.add.text(cx, cy + 10, 'Próximamente...', {
+                fontSize: '16px', fill: '#888888', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 2
+            }).setOrigin(0.5).setDepth(52))
 
-                txt(cx, cy - 60, 'Cápsula Aleatoria', '#c9a227', { size: '18px', ox: 0.5 })
-                txt(cx, cy - 30, `Precio: ${preu}$`, '#ffd700', { size: '15px', ox: 0.5 })
-                txt(cx, cy, '50% común | 25% raro | 15% épico | 5% legendario', '#888', { size: '11px', ox: 0.5 })
-
-                const btn = addItem(this.add.rectangle(cx, cy + 35, 160, 38, 0x1a3d06)
-                    .setDepth(52).setStrokeStyle(2, 0xc9a227).setInteractive({ useHandCursor: true }))
-                const btnTxt = addItem(this.add.text(cx, cy + 35, 'COMPRAR', {
-                    fontSize: '16px', fill: '#c9a227', fontFamily: 'serif'
-                }).setOrigin(0.5).setDepth(53))
-
-                btn.on('pointerover', () => btn.setStrokeStyle(3, 0xffd700))
-                btn.on('pointerout', () => btn.setStrokeStyle(2, 0xc9a227))
-                btn.on('pointerdown', () => {
-                    if (this.monedes < preu) {
-                        const f = addItem(this.add.text(cx, cy + 70, 'FONDOS INSUFICIENTES!', {
-                            fontSize: '13px', fill: '#ff4444', fontFamily: 'serif',
-                            stroke: '#000', strokeThickness: 2
-                        }).setOrigin(0.5).setDepth(53))
-                        this.tweens.add({ targets: f, alpha: 0, y: cy + 90, duration: 1500, onComplete: () => f.destroy() })
-                        return
-                    }
-                    if (this.inventari.length >= 24) {
-                        const f = addItem(this.add.text(cx, cy + 70, 'INVENTARIO LLENO!', {
-                            fontSize: '13px', fill: '#ff4444', fontFamily: 'serif',
-                            stroke: '#000', strokeThickness: 2
-                        }).setOrigin(0.5).setDepth(53))
-                        this.tweens.add({ targets: f, alpha: 0, y: cy + 90, duration: 1500, onComplete: () => f.destroy() })
-                        return
-                    }
-                    this.monedes -= preu
-                    const item = this.generarCapsula()
-                    this.inventari.push(item)
-                    renderOnce()
-
-                    const { width, height } = this.scale
-                    const cap = this.add.text(width / 2, height / 2, '💊', {
-                        fontSize: '50px'
-                    }).setOrigin(0.5).setDepth(90).setScrollFactor(0)
-                    this.tweens.add({
-                        targets: cap, scaleX: 1.3, scaleY: 1.3, duration: 100, yoyo: true, repeat: 3,
-                        onComplete: () => {
-                            this.tweens.add({ targets: cap, alpha: 0, duration: 300, onComplete: () => cap.destroy() })
-                        }
-                    })
-                    const cor = item.raresa === 'legendari' ? '#ff8800' : item.raresa === 'epic' ? '#cc44ff' : item.raresa === 'raro' ? '#44aaff' : '#ffffff'
-                    const notif = this.add.text(width - 12, height - 40, `${item.nomItem}`, {
-                        fontSize: '13px', fill: cor, fontFamily: 'serif',
-                        backgroundColor: '#1a120888', padding: { x: 10, y: 5 },
-                        stroke: '#000', strokeThickness: 2
-                    }).setOrigin(1, 0.5).setDepth(90).setScrollFactor(0).setAlpha(0)
-                    this.tweens.add({ targets: notif, alpha: 1, duration: 300, delay: 600 })
-                    this.tweens.add({ targets: notif, alpha: 0, duration: 600, delay: 2500, onComplete: () => notif.destroy() })
-                })
-            }
-            renderOnce()
+            addItem(this.add.text(cx, cy + 45, 'COMING SOON', {
+                fontSize: '14px', fill: '#ffd700', fontFamily: 'serif',
+                stroke: '#000', strokeThickness: 2
+            }).setOrigin(0.5).setDepth(52))
         }
 
-    }
-
-    POOL_ITEMS = [
-        { nomItem: 'Dado del Condenado', efecte: { tipus: 'prob_jackpot_slots', valor: 0.08 }, raresa: 'raro', itemId: '001' },
-        { nomItem: 'Anillo del Tahur', efecte: { tipus: 'prob_guany_ruleta', valor: 0.05 }, raresa: 'comu', itemId: '002' },
-        { nomItem: 'Moneda del Verdugo', efecte: { tipus: 'prob_guany_moneda', valor: 0.10 }, raresa: 'raro', itemId: '003' },
-        { nomItem: 'Capucha del Tramposo', efecte: { tipus: 'reduccio_perdua', valor: 0.15 }, raresa: 'epic', itemId: '004' },
-        { nomItem: 'Reliquia del Bufon', efecte: { tipus: 'prob_joker', valor: 0.07 }, raresa: 'raro', itemId: '005' },
-        { nomItem: 'Jarabe del Carceler', efecte: { tipus: 'anular_perdua', valor: 1 }, raresa: 'comu', itemId: '006' },
-        { nomItem: 'Mapa del Crupier Ciego', efecte: { tipus: 'revelar_crupier', valor: 1 }, raresa: 'epic', itemId: '007' },
-        { nomItem: 'Bota de Hierro', efecte: { tipus: 'ronda_extra', valor: 1 }, raresa: 'raro', itemId: '008' },
-        { nomItem: 'Amuleto del Ahorcado', efecte: { tipus: 'bonus_guany', valor: 0.20 }, raresa: 'legendari', itemId: '009' },
-        { nomItem: 'Caliz del Rey Preso', efecte: { tipus: 'monedes_extra', valor: 50 }, raresa: 'epic', itemId: '010' },
-        { nomItem: 'Guantes del Prestidigitador', efecte: { tipus: 'carta_extra', valor: 1 }, raresa: 'raro', itemId: '011' },
-        { nomItem: 'Pergamino Doble Apuesta', efecte: { tipus: 'doble_aposta', valor: 1 }, raresa: 'epic', itemId: '012' },
-        { nomItem: 'Candado de la Fortuna', efecte: { tipus: 'prob_guany_ruleta', valor: 0.03 }, raresa: 'comu', itemId: '013' },
-        { nomItem: 'Rosario del Loco', efecte: { tipus: 'as_seguro', valor: 1 }, raresa: 'legendari', itemId: '014' },
-        { nomItem: 'Dados de Hueso', efecte: { tipus: 'prob_jackpot_slots', valor: 0.12 }, raresa: 'epic', itemId: '015' },
-        { nomItem: 'Llave del Calabozo', efecte: { tipus: 'monedes_extra', valor: 15 }, raresa: 'comu', itemId: '016' },
-        { nomItem: 'Pocion de Sangre y Oro', efecte: { tipus: 'reduccio_perdua', valor: 0.25 }, raresa: 'raro', itemId: '017' },
-        { nomItem: 'Corona del Emperador', efecte: { tipus: 'bonus_guany', valor: 0.15 }, raresa: 'epic', itemId: '018' },
-        { nomItem: 'Totem Moneda Rota', efecte: { tipus: 'prob_guany_moneda', valor: 0.18 }, raresa: 'legendari', itemId: '019' },
-        { nomItem: 'Ojo del Vigilante', efecte: { tipus: 'ronda_extra', valor: 1 }, raresa: 'legendari', itemId: '020' },
-    ]
-
-    generarCapsula() {
-        const r = Math.random()
-        let raresa
-        if (r < 0.05) raresa = 'legendari'
-        else if (r < 0.20) raresa = 'epic'
-        else if (r < 0.45) raresa = 'raro'
-        else raresa = 'comu'
-        const pool = this.POOL_ITEMS.filter(i => i.raresa === raresa)
-        return { ...Phaser.Utils.Array.GetRandom(pool), tipus: 'equipable' }
     }
 
     obrirInventari() {
@@ -769,8 +702,9 @@ export default class RecinteScene extends Phaser.Scene {
             { label: 'Juego: Ruleta', value: 'RuletaScene' },
             { label: 'Juego: Slots', value: 'SlotsScene' },
             { label: 'Juego: Cara o Cruz', value: 'MonedaScene' },
-            { label: 'Juego: Dados (Boss)', value: 'DausScene' },
-            { label: 'Juego: Blackjack (Boss)', value: 'BossBlackjackScene' },
+            { label: 'Juego: Alto Riesgo: Dados', value: 'DausScene' },
+            { label: 'Juego: Alto Riesgo: Blackjack', value: 'BossBlackjackScene' },
+            { label: 'Juego: Duelo Final', value: 'BossFinalScene' },
         ]
         let idxJoc = Math.max(0, jocsOpcs.findIndex(j => j.value === localStorage.getItem('cheat_joc')))
         const jocTxt = addBtn(cx, cy + 22, jocsOpcs[idxJoc].label, () => {
@@ -859,6 +793,10 @@ export default class RecinteScene extends Phaser.Scene {
             .setDepth(100).setScrollFactor(0)
         const bg = this.add.rectangle(cx, cy, 340, 310, 0x0d0a06, 0.95).setDepth(101)
             .setStrokeStyle(2, 0xc9a227).setScrollFactor(0)
+
+        this.add.text(cx + 155, cy + 140, 'alt + p', {
+            fontSize: '10px', fill: '#1a1a1a', fontFamily: 'monospace',
+        }).setOrigin(1, 1).setDepth(102).setScrollFactor(0)
 
         const tancar = () => {
             overlay.destroy(); bg.destroy()

@@ -6,16 +6,13 @@ const S = 32
 // Definició de frames: [nom, col, row, ample, alt] (en píxels dins la graella)
 // El teu spritesheet ha de tenir aquests sprites en aquestes posicions:
 const SPRITES = [
-    ['ground',   0, 0, S, S],     // fila 0: tiles (32×32)
+    ['ground',   0, 0, S, S],
     ['wall',     1, 0, S, S],
     ['path',     2, 0, S, S],
-    ['tree',     3, 0, S, 40],    // 32×40
+    ['tree',     3, 0, S, 40],
     ['gate',     4, 0, S, S],
     ['hud_bg',   5, 0, 1, 44],
-    ['player_0', 0, 1, 16, 24],   // fila 1: jugador (16×24)
-    ['player_1', 1, 1, 16, 24],
-    ['player_2', 2, 1, 16, 24],
-    ['casino',   0, 2, 48, 48],   // fila 2: edificis (48×48)
+    ['casino',   0, 2, 48, 48],
     ['botiga',   1, 2, 48, 48],
     ['forja',    2, 2, 48, 48],
 ]
@@ -26,7 +23,6 @@ export default class BootScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('sprites', 'assets/sprites.png')
         const SUITS = ['Clubs', 'Diamonds', 'Hearts', 'Spades']
         const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
         for (const suit of SUITS) {
@@ -36,11 +32,27 @@ export default class BootScene extends Phaser.Scene {
         }
         this.load.image('cardBack', 'assets/cards/cardBack_green4.png')
         this.load.image('cardJoker', 'assets/cards/cardJoker.png')
+        this.load.image('bossCardBack', 'assets/cards/bossCardBack.png')
         this.load.image('casinoBg', 'assets/casino_matt.png')
         this.load.image('recinteBg', 'assets/background.png')
+        this.load.image('bossStage', 'assets/boss_stage.png')
         for (let n = 1; n <= 6; n++) {
             this.load.image(`dau_${n}`, `assets/dice/dieWhite${n}.png`)
         }
+        for (let n = 0; n <= 14; n++) {
+            this.load.image(`hp_${n}`, `assets/hud/frame_${String(n).padStart(2, '0')}_delay-0.08s.png`)
+        }
+        this.load.spritesheet('idleSheet', 'assets/16x32_Idle-Sheet.png', { frameWidth: 32, frameHeight: 32 })
+        this.load.spritesheet('walkSheet', 'assets/16x32_Walk-Sheet.png', { frameWidth: 32, frameHeight: 32 })
+        this.load.audio('snd_player', 'assets/sounds/player_card.opus')
+        this.load.audio('snd_npc', 'assets/sounds/npc_card.opus')
+        this.load.audio('snd_boss', 'assets/sounds/boss_card.opus')
+        this.load.audio('snd_smoke', 'assets/sounds/smoke.opus')
+        this.load.audio('snd_burn', 'assets/sounds/burn.opus')
+        this.load.audio('snd_damage', 'assets/sounds/damage_taken.opus')
+        this.load.audio('snd_item', 'assets/sounds/item.opus')
+        this.load.audio('snd_loadscreen', 'assets/sounds/loadscreen.opus')
+        this.load.audio('snd_dice', 'assets/sounds/dice.opus')
     }
 
     create() {
@@ -64,7 +76,7 @@ export default class BootScene extends Phaser.Scene {
         } else {
             // Fallback procedural
             this.genFallback()
-            for (const key of ['ground', 'wall', 'path', 'player_0', 'player_1', 'player_2',
+            for (const key of ['ground', 'wall', 'path',
                 'casino', 'botiga', 'forja', 'tree', 'gate', 'hud_bg']) {
                 if (this.textures.exists(key)) this.textures.get(key).setFilter(NEAREST)
             }

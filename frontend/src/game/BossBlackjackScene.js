@@ -91,12 +91,12 @@ export default class BossBlackjackScene extends Phaser.Scene {
 
         this.aposta = this.minBet()
 
-        this.add.text(width / 2, 28, 'BLACKJACK DEL BOSS', {
+        this.add.text(width / 2, 28, 'ALTO RIESGO: BLACKJACK', {
             fontSize: '32px', fill: '#ff4444', fontFamily: 'serif',
             stroke: '#000', strokeThickness: 5
         }).setOrigin(0.5)
 
-        this.rondesText = this.add.text(width / 2, 68, 'Dia 10 — Ronda 1/3', {
+        this.rondesText = this.add.text(width / 2, 68, 'Día 10 — Alto Riesgo', {
             fontSize: '16px', fill: '#e8d5a3', fontFamily: 'serif'
         }).setOrigin(0.5)
 
@@ -340,7 +340,7 @@ export default class BossBlackjackScene extends Phaser.Scene {
         this.jugadorText.setText(`Tu: ${this.valorJugador}`)
         this.dealerText.setText('Crupier: ?')
         this.resultText.setText('')
-        this.rondesText.setText(`Dia 10 — Ronda ${this.rondes + 1}/${this.maxRondes}`)
+                this.rondesText.setText(`Día 10 — Alto Riesgo\nRonda ${this.rondes + 1}/${this.maxRondes}`)
         this.btnPedirCarta.setVisible(this.coinflipWon)
         this.btnPlantar.setVisible(this.coinflipWon)
         this.btnPedirCarta._btnText.setVisible(this.coinflipWon)
@@ -360,12 +360,14 @@ export default class BossBlackjackScene extends Phaser.Scene {
         })
         this.time.delayedCall(400, () => {
             this.flyCardTo(this.cartesCrupier[1].img, this.getCardX(2, 1), dealerY)
+            this.sound.play('snd_npc')
         })
         this.time.delayedCall(600, () => {
             for (let i = 0; i < this.cartesJugador.length; i++) {
                 this.time.delayedCall(i * 200, () => {
                     const img = this.flyCardTo(this.cartesJugador[i].img,
                         this.getCardX(this.cartesJugador.length, i), jugadorY)
+                    this.sound.play('snd_player')
                     if (this.cartesJugador[i].rank === '*') {
                         this.time.delayedCall(300, () => this.efecteJoker(i, img))
                     }
@@ -396,6 +398,7 @@ export default class BossBlackjackScene extends Phaser.Scene {
         const i = this.cartesJugador.length - 1
         const tx = this.getCardX(this.cartesJugador.length, i)
         const img = this.flyCardTo(nova.img, tx, jugadorY)
+        this.sound.play('snd_player')
 
         if (nova.rank === '*') {
             this.time.delayedCall(400, () => this.efecteJoker(i, img))
@@ -456,6 +459,7 @@ export default class BossBlackjackScene extends Phaser.Scene {
         const i = this.cartesCrupier.length - 1
         const tx = this.getCardX(this.cartesCrupier.length, i)
         this.flyCardTo(nova.img, tx, dealerY)
+        this.sound.play('snd_npc')
 
         this.time.delayedCall(500, () => {
             if (this.valorCrupier > 21) {
@@ -512,7 +516,7 @@ export default class BossBlackjackScene extends Phaser.Scene {
             this.time.delayedCall(1500, () => this.mostrarResultats())
         } else {
             this.time.delayedCall(1800, () => {
-                this.rondesText.setText(`Dia 10 — Ronda ${this.rondes + 1}/${this.maxRondes}`)
+        this.rondesText.setText(`Día 10 — Alto Riesgo\nRonda ${this.rondes + 1}/${this.maxRondes}`)
                 this.coinflipWon = false
                 this.flipping = false
                 this.autoStandResolved = false

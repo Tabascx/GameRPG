@@ -5,8 +5,9 @@ const JOCS = [
     { nom: 'Ruleta', escena: 'RuletaScene', color: 0x3d1a00 },
     { nom: 'Slots', escena: 'SlotsScene', color: 0x1a0d3d },
     { nom: 'Cara o Creu', escena: 'MonedaScene', color: 0x3d3d06 },
-    { nom: 'Daus (Boss)', escena: 'DausScene', color: 0x3d0606 },
-    { nom: 'Blackjack (Boss)', escena: 'BossBlackjackScene', color: 0x3d0606 },
+    { nom: 'Alto Riesgo: Dados', escena: 'DausScene', color: 0x3d0606 },
+    { nom: 'Alto Riesgo: Blackjack', escena: 'BossBlackjackScene', color: 0x3d0606 },
+    { nom: 'Duelo Final', escena: 'BossFinalScene', color: 0x3d0606 },
 ]
 
 export default class CasinoScene extends Phaser.Scene {
@@ -29,15 +30,11 @@ export default class CasinoScene extends Phaser.Scene {
 
         this.add.image(width / 2, height / 2, 'casinoBg').setDisplaySize(width, height)
         this.afegirVinyeta(width, height)
-
-        this.add.text(width / 2, height / 3, '🎲 CASINO 🎲', {
-            fontSize: '36px', fill: '#c9a227', fontFamily: 'serif',
-            stroke: '#000', strokeThickness: 5
-        }).setOrigin(0.5)
+        this.sound.play('snd_loadscreen')
 
         const info = this.add.text(width / 2, height / 2, '', {
-            fontSize: '22px', fill: '#e8d5a3', fontFamily: 'serif',
-            stroke: '#000', strokeThickness: 3
+            fontSize: '34px', fill: '#e8d5a3', fontFamily: 'serif',
+            stroke: '#000', strokeThickness: 4
         }).setOrigin(0.5)
 
         const monText = this.add.text(width - 16, 16, `${this.monedes}$`, {
@@ -70,16 +67,28 @@ export default class CasinoScene extends Phaser.Scene {
             })
             return
         }
+        if (this.dia === 15) {
+            this.scene.start('BossFinalScene', {
+                nickname: this.nickname,
+                monedes: this.monedes,
+                dia: this.dia,
+                millores: this.millores,
+                equipats: this.equipats,
+                inventari: this.inventari,
+                capsulaPreu: this.capsulaPreu
+            })
+            return
+        }
         const forcjat = localStorage.getItem('cheat_joc')
         if (forcjat) {
             joc = JOCS.find(j => j.escena === forcjat)
         }
         if (!joc) {
-            joc = Phaser.Utils.Array.GetRandom(JOCS.filter(j => j.escena !== 'DausScene' && j.escena !== 'BossBlackjackScene'))
+            joc = Phaser.Utils.Array.GetRandom(JOCS.filter(j => j.escena !== 'DausScene' && j.escena !== 'BossBlackjackScene' && j.escena !== 'BossFinalScene'))
         }
 
         this.time.delayedCall(600, () => {
-                info.setText(`Hoy toca... ${joc.nom}!`)
+            info.setText(joc.nom)
             this.cameras.main.shake(300, 0.01)
         })
 
